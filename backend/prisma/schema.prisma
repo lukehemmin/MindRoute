@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 사용자 모델
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  name          String
+  password      String
+  roleId        String
+  role          Role           @relation(fields: [roleId], references: [id])
+  isActive      Boolean        @default(true)
+  lastLogin     DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  apiKeys       ApiKey[]
+  completionLogs CompletionLog[]
+}
+
+// 역할 모델
+model Role {
+  id           String         @id @default(uuid())
+  name         String         @unique
+  description  String?
+  permissions  String[]
+  createdAt    DateTime       @default(now())
+  users        User[]
+}
+
+// API 키 모델
+model ApiKey {
+  id            String         @id @default(uuid())
+  name          String
+  key           String         @unique
+  userId        String
+  user          User           @relation(fields: [userId], references: [id])
+  isActive      Boolean        @default(true)
+  expiresAt     DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+  completionLogs CompletionLog[]
+}
+
+// 프로바이더 모델
+model Provider {
+  id            String         @id @default(uuid())
+  name          String         @unique
+  displayName   String
+  apiKey        String?
+  baseUrl       String?
+  organization  String?
+  isActive      Boolean        @default(true)
+  modelOptions  Json?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+// 완성 로그 모델
+model CompletionLog {
+  id                String         @id @default(uuid())
+  userId            String?
+  user              User?          @relation(fields: [userId], references: [id])
+  apiKeyId          String?
+  apiKey            ApiKey?        @relation(fields: [apiKeyId], references: [id])
+  provider          String
+  model             String
+  prompt            String         @db.Text
+  systemPrompt      String?        @db.Text
+  messages          Json?
+  temperature       Float?
+  maxTokens         Int?
+  response          String         @db.Text
+  promptTokens      Int            @default(0)
+  completionTokens  Int            @default(0)
+  totalTokens       Int            @default(0)
+  processingTimeMs  Int            @default(0)
+  isStream          Boolean        @default(false)
+  createdAt         DateTime       @default(now())
+  metadata          Json?
+}
