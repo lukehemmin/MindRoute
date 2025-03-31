@@ -20,6 +20,20 @@ services:
       - REFRESH_TOKEN_EXPIRES_IN=7d
     restart: unless-stopped
 
+  # 프론트엔드 서비스
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    environment:
+      - NODE_ENV=development
+    restart: unless-stopped
+
   # MongoDB 서비스
   mongodb:
     image: mongo:latest
