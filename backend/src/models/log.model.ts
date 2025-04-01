@@ -1,40 +1,38 @@
-import { Model, DataTypes, Optional } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/database';
 
 // 로그 속성 인터페이스
 export interface LogAttributes {
   id: string;
-  userId: string;
-  providerId: string;
-  timestamp: Date;
-  requestBody: any;
-  responseBody: any;
-  tokensUsed: number | null;
-  statusCode: number;
-  modelName?: string;
-  endpoint?: string;
-  executionTime?: number; // 응답 시간(ms)
+  userId: string | null;
+  providerId: string | null;
+  requestType: string;
+  requestBody: Record<string, any>;
+  responseBody: Record<string, any> | null;
+  status: string;
+  executionTime: number | null;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  totalTokens: number | null;
+  error: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-// 로그 생성 시 선택적 속성
-export interface LogCreationAttributes extends Optional<LogAttributes, 'id' | 'createdAt' | 'updatedAt' | 'tokensUsed' | 'modelName' | 'endpoint' | 'executionTime'> {}
-
 // 로그 모델 클래스
-class Log extends Model<LogAttributes, LogCreationAttributes> implements LogAttributes {
+export class Log extends Model<LogAttributes> implements LogAttributes {
   public id!: string;
-  public userId!: string;
-  public providerId!: string;
-  public timestamp!: Date;
-  public requestBody!: any;
-  public responseBody!: any;
-  public tokensUsed!: number | null;
-  public statusCode!: number;
-  public modelName!: string | undefined;
-  public endpoint!: string | undefined;
-  public executionTime!: number | undefined;
-
+  public userId!: string | null;
+  public providerId!: string | null;
+  public requestType!: string;
+  public requestBody!: Record<string, any>;
+  public responseBody!: Record<string, any> | null;
+  public status!: string;
+  public executionTime!: number | null;
+  public promptTokens!: number | null;
+  public completionTokens!: number | null;
+  public totalTokens!: number | null;
+  public error!: string | null;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -43,12 +41,13 @@ Log.init(
   {
     id: {
       type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
+      defaultValue: DataTypes.UUIDV4,
+      allowNull: false,
     },
     userId: {
       type: DataTypes.UUID,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'users',
         key: 'id',
@@ -56,16 +55,15 @@ Log.init(
     },
     providerId: {
       type: DataTypes.UUID,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'providers',
         key: 'id',
       },
     },
-    timestamp: {
-      type: DataTypes.DATE,
+    requestType: {
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: DataTypes.NOW,
     },
     requestBody: {
       type: DataTypes.JSONB,
@@ -73,33 +71,39 @@ Log.init(
     },
     responseBody: {
       type: DataTypes.JSONB,
-      allowNull: false,
-    },
-    tokensUsed: {
-      type: DataTypes.INTEGER,
       allowNull: true,
     },
-    statusCode: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    modelName: {
+    status: {
       type: DataTypes.STRING,
-      allowNull: true,
-    },
-    endpoint: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
+      defaultValue: 'pending',
     },
     executionTime: {
       type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: '실행 시간 (밀리초 단위)',
+    },
+    promptTokens: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    completionTokens: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    totalTokens: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    error: {
+      type: DataTypes.TEXT,
       allowNull: true,
     },
   },
   {
     sequelize,
-    modelName: 'Log',
     tableName: 'logs',
+    timestamps: true,
     indexes: [
       {
         fields: ['userId'],
@@ -108,7 +112,10 @@ Log.init(
         fields: ['providerId'],
       },
       {
-        fields: ['timestamp'],
+        fields: ['createdAt'],
+      },
+      {
+        fields: ['status'],
       },
     ],
   }
