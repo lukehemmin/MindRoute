@@ -1,10 +1,10 @@
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
-import User, { UserRole } from '../models/user.model';
+import User from '../models/user.model';
 import RefreshToken from '../models/refreshtoken.model';
 import { generateAccessToken, generateRefreshToken, revokeRefreshToken } from '../utils/jwt';
 import logger from '../utils/logger';
-import authConfig from '../config/auth';
+import authConfig from '../config/auth.config';
 
 export interface LoginCredentials {
   email: string;
@@ -15,7 +15,7 @@ export interface RegisterData {
   email: string;
   password: string;
   name: string;
-  role?: UserRole;
+  role?: string;
 }
 
 export interface AuthTokens {
@@ -51,7 +51,7 @@ class AuthService {
       }
       
       // 계정 활성화 여부 확인
-      if (!user.active) {
+      if (!user.isActive) {
         throw new Error('비활성화된 계정입니다. 관리자에게 문의하세요.');
       }
       
@@ -98,12 +98,11 @@ class AuthService {
       
       // 새 사용자 생성
       const user = await User.create({
-        id: uuidv4(),
         email,
         name,
-        passwordHash: await bcrypt.hash(password, authConfig.password.saltRounds),
+        password: await bcrypt.hash(password, authConfig.password.saltRounds),
         role: role || 'user',
-        active: true,
+        isActive: true,
         lastLogin: new Date(),
       });
       
@@ -163,12 +162,11 @@ class AuthService {
       
       // 관리자 계정 생성
       await User.create({
-        id: uuidv4(),
         email,
         name,
-        passwordHash: await bcrypt.hash(password, authConfig.password.saltRounds),
+        password: await bcrypt.hash(password, authConfig.password.saltRounds),
         role: 'admin',
-        active: true,
+        isActive: true,
       });
       
       logger.info('초기 관리자 계정이 생성되었습니다.');
@@ -182,7 +180,7 @@ class AuthService {
    * 비밀번호 검증 유틸리티 함수
    */
   public async validatePassword(
-    userId: string,
+    userId: number,
     password: string
   ): Promise<boolean> {
     try {
@@ -203,7 +201,7 @@ class AuthService {
    * 비밀번호 변경
    */
   public async changePassword(
-    userId: string,
+    userId: number,
     currentPassword: string,
     newPassword: string
   ): Promise<boolean> {
@@ -227,7 +225,7 @@ class AuthService {
       }
       
       // 비밀번호 업데이트
-      user.passwordHash = await bcrypt.hash(newPassword, authConfig.password.saltRounds);
+      user.password = await bcrypt.hash(newPassword, authConfig.password.saltRounds);
       await user.save();
       
       return true;
