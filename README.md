@@ -14,13 +14,24 @@ MindRoute는 여러 AI 제공업체(OpenAI, Anthropic, Google)를 단일 백엔�
 
 ## 기술 스택
 
-- **Backend**: Node.js, Express, TypeScript, Sequelize ORM
-- **Frontend**: React, Next.js
-- **Database**: PostgreSQL
-- **Authentication**: JWT (리프레시 토큰 포함)
-- **Security**: 비밀번호 해싱(bcrypt), API 키 암호화(AES)
-- **Documentation**: Swagger/Redoc
-- **Containerization**: Docker
+### 백엔드
+- **언어 및 프레임워크**: Node.js, Express, TypeScript
+- **ORM**: Sequelize
+- **데이터베이스**: PostgreSQL
+- **인증**: JWT (액세스 토큰/리프레시 토큰)
+- **로깅**: Winston
+- **보안**: bcrypt(비밀번호 해싱), express-rate-limit(요청 제한)
+- **파일 처리**: express-fileupload
+
+### 프론트엔드
+- **프레임워크**: React, Next.js
+- **상태 관리**: React Context API
+- **스타일링**: Tailwind CSS
+
+### 인프라
+- **컨테이너화**: Docker, Docker Compose
+- **CI/CD**: GitHub Actions
+- **문서화**: Swagger/OpenAPI
 
 ## 시작하기
 
@@ -34,8 +45,8 @@ MindRoute는 여러 AI 제공업체(OpenAI, Anthropic, Google)를 단일 백엔�
 
 1. 저장소 복제:
    ```
-   git clone https://github.com/yourusername/mindroute.git
-   cd mindroute
+   git clone https://github.com/lukehemmin/MindRoute.git
+   cd MindRoute
    ```
 
 2. 백엔드 설정:
@@ -62,14 +73,31 @@ MindRoute는 여러 AI 제공업체(OpenAI, Anthropic, Google)를 단일 백엔�
 
 현재 구현된 엔드포인트:
 
+### 상태 확인
 - `GET /health`: API 게이트웨이 상태 확인 (데이터베이스 연결 상태 포함)
+
+### 인증
 - `POST /api/auth/register`: 새 사용자 등록
 - `POST /api/auth/login`: 사용자 로그인
 - `POST /api/auth/refresh-token`: 액세스 토큰 갱신
+- `POST /api/auth/logout`: 로그아웃 (리프레시 토큰 취소)
+- `POST /api/auth/forgot-password`: 비밀번호 재설정 요청
+- `POST /api/auth/reset-password`: 비밀번호 재설정
+- `GET /api/auth/verify-email/:token`: 이메일 확인
+- `POST /api/auth/change-password`: 비밀번호 변경
+- `GET /api/auth/profile`: 사용자 프로필 조회
+- `PUT /api/auth/profile`: 사용자 프로필 업데이트
+
+### AI API
+- `GET /api/ai/providers`: 사용 가능한 AI 제공업체 목록 조회
+- `GET /api/ai/providers/:providerId/models`: 특정 제공업체의 모델 목록 조회
+- `POST /api/ai/providers/:providerId/chat`: 채팅 완성 요청
+- `POST /api/ai/providers/:providerId/completion`: 텍스트 완성 요청
 
 ## 데이터베이스 스키마
 
 - **Users**: 사용자 정보 저장 (이메일, 비밀번호 해시, 역할 등)
+- **RefreshTokens**: 리프레시 토큰 정보 저장 (사용자 ID, 토큰, 만료 시간 등)
 - **Providers**: AI 제공업체 정보 (API 키, 엔드포인트, 미디어 정책 등)
 - **UserProviders**: 사용자-제공업체 간 관계 및 사용자별 제한 설정
 - **Logs**: API 호출 로그 (사용자, 제공업체, 토큰 사용량 등)
@@ -79,17 +107,30 @@ MindRoute는 여러 AI 제공업체(OpenAI, Anthropic, Google)를 단일 백엔�
 
 1. ✅ 기본 아키텍처 및 POC
 2. ✅ PostgreSQL DB 모델 및 기본 인증
-3. 🔄 제공업체 관리자 및 핵심 라우팅 (진행 중)
-4. ⬜ 전체 JWT 인증 및 보안 키 저장
-5. ⬜ 웹 UI, 관리자 패널 및 로깅
-6. ⬜ API 문서 및 Playground
+3. ✅ 사용자 인증 및 계정 관리
+4. 🔄 제공업체 관리 및 AI 엔드포인트 라우팅 (진행 중)
+5. ⬜ 파일 업로드 및 미디어 처리
+6. ⬜ 웹 UI, 관리자 패널 및 로깅
+7. ⬜ API 문서 및 Playground
 
 ## 보안 기능
 
-- 비밀번호는 bcrypt를 사용하여 해싱됩니다.
-- API 키는 AES-256 암호화를 사용하여 저장됩니다.
-- JWT 토큰은 액세스 및 리프레시 토큰 메커니즘을 사용합니다.
-- 요청별 제공업체 정책 검증 및 적용
+- **인증**: JWT 토큰 기반 인증 (액세스 및 리프레시 토큰)
+- **비밀번호 보안**: bcrypt를 사용한 비밀번호 해싱
+- **API 키 보호**: AES-256 암호화를 통한 API 키 저장
+- **요청 제한**: express-rate-limit을 통한 DOS 공격 방지
+- **보안 헤더**: helmet을 사용한 보안 HTTP 헤더 설정
+- **CORS 보호**: 허용된 오리진만 접근 가능
+
+## 기여하기
+
+이 프로젝트에 기여하고 싶다면:
+
+1. 이 저장소를 포크하세요
+2. 새 기능 브랜치를 만드세요 (`git checkout -b feature/amazing-feature`)
+3. 변경 사항을 커밋하세요 (`git commit -m 'Add some amazing feature'`)
+4. 브랜치를 푸시하세요 (`git push origin feature/amazing-feature`)
+5. Pull Request를 열어주세요
 
 ## 라이선스
 
