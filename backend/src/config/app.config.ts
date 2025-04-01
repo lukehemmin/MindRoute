@@ -12,6 +12,9 @@ interface AppConfig {
   corsOrigin: string | string[];
   fileUploadPath: string;
   logLevel: string;
+  jwtSecret: string;
+  jwtAccessExpiration: string;
+  jwtRefreshExpiration: string;
 }
 
 const config: AppConfig = {
@@ -20,6 +23,9 @@ const config: AppConfig = {
   corsOrigin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*',
   fileUploadPath: process.env.FILE_UPLOAD_PATH || path.join(__dirname, '../../uploads'),
   logLevel: process.env.LOG_LEVEL || 'info',
+  jwtSecret: process.env.JWT_SECRET || 'default_jwt_secret_key',
+  jwtAccessExpiration: process.env.JWT_ACCESS_EXPIRATION || '15m',
+  jwtRefreshExpiration: process.env.JWT_REFRESH_EXPIRATION || '7d',
 };
 
 export default config; 
