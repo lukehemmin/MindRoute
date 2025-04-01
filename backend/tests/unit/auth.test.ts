@@ -3,9 +3,9 @@
 import sinon from 'sinon';
 import bcrypt from 'bcrypt';
 import { User } from '../../src/models/user.model';
-import authService from '../../src/services/auth.service';
 import jwt from 'jsonwebtoken';
-import { LoginCredentials, RegisterData, AuthTokens } from '../../src/services/auth.service';
+import * as jwtUtils from '../../src/utils/jwt';
+import authService, { LoginCredentials, RegisterData, AuthTokens } from '../../src/services/auth.service';
 
 // chai를 전역 변수로 선언하여 동적으로 로드
 declare const require: any;
@@ -25,19 +25,26 @@ describe('Auth Service', () => {
 
   describe('register', () => {
     it('should hash password and create a new user', async () => {
-      // 테스트를 위한 Stub 설정
+      // 먼저 findOne 스텁을 설정하여 null 반환 (사용자가 존재하지 않음)
+      sandbox.stub(User, 'findOne').resolves(null);
+      
+      // 비밀번호 해싱 모킹
       const hashStub = sandbox.stub(bcrypt, 'hash').resolves('hashedPassword');
-      const createStub = sandbox.stub(User, 'create').resolves({
+      
+      // 새 사용자 생성 모킹
+      const userStub = {
         id: '123456',
         email: 'test@example.com',
         name: 'testuser',
         role: 'user',
         password: 'hashedPassword',
         validatePassword: () => Promise.resolve(true),
-      } as unknown as User);
+      } as unknown as User;
+      const createStub = sandbox.stub(User, 'create').resolves(userStub);
 
-      // generateAccessToken와 generateRefreshToken 스텁 추가
-      const generateTokensStub = sandbox.stub(jwt, 'sign').returns('mockedToken' as any);
+      // JWT 함수 모킹
+      sandbox.stub(jwtUtils, 'generateAccessToken').returns('mock-access-token');
+      sandbox.stub(jwtUtils, 'generateRefreshToken').resolves('mock-refresh-token');
 
       // 테스트 실행
       const result = await authService.register({
@@ -79,6 +86,10 @@ describe('Auth Service', () => {
 
   describe('login', () => {
     it('should return tokens if credentials are valid', async () => {
+      // generateRefreshToken 모킹
+      sandbox.stub(jwtUtils, 'generateRefreshToken').resolves('mock-refresh-token');
+      sandbox.stub(jwtUtils, 'generateAccessToken').returns('mock-access-token');
+      
       // 테스트를 위한 Stub 설정
       const userStub = {
         id: '123456',
@@ -92,9 +103,6 @@ describe('Auth Service', () => {
       } as unknown as User;
       
       sandbox.stub(User, 'findOne').resolves(userStub);
-      // JWT sign 함수의 반환 타입 수정
-      const jwtSignStub = sandbox.stub(jwt, 'sign');
-      jwtSignStub.returns('mockedToken' as any);
       
       // 테스트 실행
       const result = await authService.login({
