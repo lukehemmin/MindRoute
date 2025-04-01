@@ -1,79 +1,86 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
-import { sequelize } from './models';
+import compression from 'compression';
+import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 import { testConnection } from './config/database';
 import authRoutes from './routes/auth.routes';
+// import userRoutes from './routes/user.routes';
+// import taskRoutes from './routes/task.routes';
+import aiRoutes from './routes/ai.routes';
 import logger from './utils/logger';
+import fileUpload from 'express-fileupload';
+import providerManager from './utils/providerManager';
 
-// 환경 변수 로드
-dotenv.config();
+const app: Express = express();
+const port = process.env.PORT || 5000;
 
-const app = express();
-const PORT = process.env.PORT || 5000;
+// 데이터베이스 연결 테스트
+testConnection();
 
 // 미들웨어
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  credentials: true,
+}));
 app.use(helmet());
-app.use(express.json());
+app.use(compression());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
+app.use(morgan('dev'));
+app.use(fileUpload({
+  createParentPath: true,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  abortOnLimit: true,
+  useTempFiles: false,
+  tempFileDir: '/tmp/',
+}));
 
-// 로깅 미들웨어
-app.use((req: Request, res: Response, next: NextFunction) => {
-  logger.info(`${req.method} ${req.url}`);
-  next();
+// 에러 핸들러
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  logger.error(err.stack);
+  res.status(500).json({
+    success: false,
+    message: 'Server error',
+  });
+});
+
+// 기본 라우트
+app.get('/', (req: Request, res: Response) => {
+  res.json({
+    message: 'MindRoute API v1.0',
+    status: 'Running',
+  });
+});
+
+// 헬스 체크
+app.get('/health', (req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    uptime: process.uptime(),
+    timestamp: Date.now(),
+  });
 });
 
 // 라우트
 app.use('/api/auth', authRoutes);
+// app.use('/api/users', userRoutes);
+// app.use('/api/tasks', taskRoutes);
+app.use('/api/ai', aiRoutes);
 
-// 헬스 체크 엔드포인트
-app.get('/health', async (req: Request, res: Response) => {
-  const dbStatus = await testConnection();
+// 서버 시작
+app.listen(port, async () => {
+  logger.info(`Server running on port ${port}`);
   
-  res.status(200).json({
-    status: 'success',
-    message: 'MindRoute API Gateway is running',
-    database: dbStatus ? 'connected' : 'disconnected',
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// 오류 처리 미들웨어
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  logger.error(`오류: ${err.message}`);
-  res.status(500).json({
-    status: 'error',
-    message: '서버 오류가 발생했습니다.',
-  });
-});
-
-// 데이터베이스 연결 및 서버 시작
-const startServer = async () => {
+  // 제공업체 초기화
   try {
-    // 데이터베이스 연결 테스트
-    const dbStatus = await testConnection();
-    if (!dbStatus) {
-      logger.error('데이터베이스 연결 실패, 서버를 종료합니다.');
-      process.exit(1);
-    }
-
-    // 모델 동기화 (개발 환경에서만 사용, 프로덕션에서는 마이그레이션 사용 권장)
-    if (process.env.NODE_ENV === 'development') {
-      await sequelize.sync({ alter: true });
-      logger.info('데이터베이스 모델이 동기화되었습니다.');
-    }
-
-    // 서버 시작
-    app.listen(PORT, () => {
-      logger.info(`서버가 포트 ${PORT}에서 실행 중입니다.`);
-    });
+    await providerManager.initialize();
+    logger.info('Provider Manager initialized successfully');
   } catch (error) {
-    logger.error(`서버 시작 실패: ${error}`);
-    process.exit(1);
+    logger.error('Error initializing Provider Manager:', error);
   }
-};
-
-startServer();
+});
 
 export default app; 
