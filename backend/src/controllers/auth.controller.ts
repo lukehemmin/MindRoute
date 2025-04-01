@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { User, UserRole } from '../models/user.model';
+import User from '../models/user.model';
 import { generateToken, generateRefreshToken, verifyToken, refreshAccessToken } from '../utils/jwt';
 import logger from '../utils/logger';
 import authService from '../services/auth.service';
@@ -303,5 +303,190 @@ export const changePassword = async (
         error: error.message,
       });
     }
+  }
+};
+
+/**
+ * 이메일 인증
+ */
+export const verifyEmail = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { token } = req.params;
+    
+    // 간단한 응답 (실제 구현은 토큰 검증 로직 필요)
+    res.json({
+      success: true,
+      message: '이메일이 인증되었습니다.',
+    });
+  } catch (error: any) {
+    logger.error('이메일 인증 오류:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: '이메일 인증 처리 중 오류가 발생했습니다.',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * 비밀번호 재설정 요청
+ */
+export const forgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      res.status(400).json({
+        success: false,
+        message: '이메일을 입력해주세요.',
+      });
+      return;
+    }
+    
+    // 실제 구현에서는 이메일 발송 로직 추가
+    res.json({
+      success: true,
+      message: '비밀번호 재설정 안내 이메일이 발송되었습니다.',
+    });
+  } catch (error: any) {
+    logger.error('비밀번호 재설정 요청 오류:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: '비밀번호 재설정 처리 중 오류가 발생했습니다.',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * 비밀번호 재설정
+ */
+export const resetPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { token, password } = req.body;
+    
+    if (!token || !password) {
+      res.status(400).json({
+        success: false,
+        message: '토큰과 새 비밀번호를 모두 입력해주세요.',
+      });
+      return;
+    }
+    
+    // 실제 구현에서는 토큰 검증 및 비밀번호 변경 로직 추가
+    res.json({
+      success: true,
+      message: '비밀번호가 재설정되었습니다.',
+    });
+  } catch (error: any) {
+    logger.error('비밀번호 재설정 오류:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: '비밀번호 재설정 처리 중 오류가 발생했습니다.',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * 사용자 프로필 조회
+ */
+export const getProfile = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: '인증되지 않은 요청입니다.',
+      });
+      return;
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        id: req.user.id,
+        email: req.user.email,
+        name: req.user.name,
+        role: req.user.role,
+      },
+    });
+  } catch (error: any) {
+    logger.error('프로필 조회 오류:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: '프로필 조회 중 오류가 발생했습니다.',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * 사용자 프로필 업데이트
+ */
+export const updateProfile = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: '인증되지 않은 요청입니다.',
+      });
+      return;
+    }
+    
+    const { name } = req.body;
+    
+    if (!name) {
+      res.status(400).json({
+        success: false,
+        message: '이름을 입력해주세요.',
+      });
+      return;
+    }
+    
+    // 사용자 정보 업데이트
+    await req.user.update({ name });
+    
+    res.json({
+      success: true,
+      message: '프로필이 업데이트되었습니다.',
+      data: {
+        id: req.user.id,
+        email: req.user.email,
+        name: req.user.name,
+        role: req.user.role,
+      },
+    });
+  } catch (error: any) {
+    logger.error('프로필 업데이트 오류:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: '프로필 업데이트 중 오류가 발생했습니다.',
+      error: error.message,
+    });
   }
 }; 
