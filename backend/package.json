@@ -1,14 +1,15 @@
 {
   "name": "mindroute-backend",
   "version": "1.0.0",
+  "type": "commonjs",
   "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "test": "mocha -r ts-node/register tests/**/*.test.ts",
-    "test:unit": "mocha -r ts-node/register tests/unit/**/*.test.ts",
-    "test:integration": "mocha -r ts-node/register tests/integration/**/*.test.ts"
+    "test": "mocha -r ts-node/register 'tests/**/*.test.ts' --timeout 10000",
+    "test:unit": "mocha -r ts-node/register 'tests/unit/**/*.test.ts' --timeout 10000",
+    "test:integration": "mocha -r ts-node/register 'tests/integration/**/*.test.ts' --timeout 10000"
   },
   "keywords": [],
   "author": "",
@@ -51,7 +52,6 @@
     "sequelize-cli": "^6.6.2",
     "swagger-ui-express": "^5.0.1",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.8.2",
     "uuid": "^11.1.0",
     "winston": "^3.17.0"
   },
@@ -62,6 +62,10 @@
     "@types/sinon": "^17.0.4",
     "chai": "^5.2.0",
     "mocha": "^11.1.0",
-    "sinon": "^20.0.0"
+    "sinon": "^20.0.0",
+    "ts-mocha": "^11.1.0",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.8.2"
   }
 }

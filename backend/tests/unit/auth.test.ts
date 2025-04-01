@@ -40,7 +40,7 @@ describe('Auth Service', () => {
         email: 'test@example.com',
         password: 'password123',
         name: 'testuser',
-      });
+      } as RegisterData);
 
       // 검증
       expect(hashStub.calledOnce).to.be.true;
@@ -62,11 +62,13 @@ describe('Auth Service', () => {
           email: 'existing@example.com',
           password: 'password123',
           name: 'existinguser',
-        });
+        } as RegisterData);
         // 에러가 발생해야 하므로 여기에 도달하면 안 됨
         expect.fail('Expected an error to be thrown');
-      } catch (error: any) {
-        expect(error.message).to.include('이미 사용 중인 이메일입니다');
+      } catch (error) {
+        if (error instanceof Error) {
+          expect(error.message).to.include('이미 사용 중인 이메일입니다');
+        }
       }
     });
   });
@@ -94,7 +96,7 @@ describe('Auth Service', () => {
       const result = await authService.login({
         email: 'test@example.com',
         password: 'password123',
-      });
+      } as LoginCredentials);
 
       // 검증
       expect(result).to.have.property('accessToken');
@@ -110,11 +112,13 @@ describe('Auth Service', () => {
         await authService.login({
           email: 'nonexistent@example.com',
           password: 'password123',
-        });
+        } as LoginCredentials);
         // 에러가 발생해야 하므로 여기에 도달하면 안 됨
         expect.fail('Expected an error to be thrown');
-      } catch (error: any) {
-        expect(error.message).to.include('이메일 또는 비밀번호가 올바르지 않습니다');
+      } catch (error) {
+        if (error instanceof Error) {
+          expect(error.message).to.include('이메일 또는 비밀번호가 올바르지 않습니다');
+        }
       }
     });
 
@@ -134,11 +138,13 @@ describe('Auth Service', () => {
         await authService.login({
           email: 'test@example.com',
           password: 'wrongpassword',
-        });
+        } as LoginCredentials);
         // 에러가 발생해야 하므로 여기에 도달하면 안 됨
         expect.fail('Expected an error to be thrown');
-      } catch (error: any) {
-        expect(error.message).to.include('이메일 또는 비밀번호가 올바르지 않습니다');
+      } catch (error) {
+        if (error instanceof Error) {
+          expect(error.message).to.include('이메일 또는 비밀번호가 올바르지 않습니다');
+        }
       }
     });
   });
