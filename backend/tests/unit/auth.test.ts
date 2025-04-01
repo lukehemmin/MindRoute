@@ -1,12 +1,16 @@
 /// <reference types="mocha" />
 
-import { expect } from 'chai';
 import sinon from 'sinon';
 import bcrypt from 'bcrypt';
 import { User } from '../../src/models/user.model';
 import authService from '../../src/services/auth.service';
 import jwt from 'jsonwebtoken';
 import { LoginCredentials, RegisterData, AuthTokens } from '../../src/services/auth.service';
+
+// chai를 전역 변수로 선언하여 동적으로 로드
+declare const require: any;
+const chai = require('chai');
+const { expect } = chai;
 
 describe('Auth Service', () => {
   let sandbox: sinon.SinonSandbox;
