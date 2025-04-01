@@ -1,129 +1,80 @@
 import { Request, Response, NextFunction } from 'express';
-import { RequestHandler } from 'express';
-import fileUpload from 'express-fileupload';
+import { UploadedFile } from 'express-fileupload';
+import path from 'path';
+import fs from 'fs';
+import { v4 as uuidv4 } from 'uuid';
+import { ApiError } from './error.middleware';
 import logger from '../utils/logger';
 
-// 파일 업로드 구성
-const fileUploadMiddleware = fileUpload({
-  createParentPath: true,
-  limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB
-  },
-  abortOnLimit: true,
-  useTempFiles: false,
-  tempFileDir: '/tmp/',
-  preserveExtension: true,
-  debug: process.env.NODE_ENV === 'development',
-});
+// 허용된 파일 형식
+const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.doc', '.docx', '.png', '.jpg', '.jpeg'];
+// 최대 파일 크기 (10MB)
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// 업로드 디렉토리
+const UPLOAD_DIR = path.join(__dirname, '../../uploads');
 
-// 파일 처리 미들웨어
-export const handleFileUpload: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
-  // 파일이 없으면 다음 미들웨어로 이동
-  if (!req.files && !req.file) {
-    next();
-    return;
-  }
-  
+// 업로드 디렉토리 생성
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+export const handleFileUpload = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
   try {
-    let files = req.files || {};
-    
-    // 파일 개수 제한
-    const fileCount = Array.isArray(files) 
-      ? files.length 
-      : Object.values(files).reduce((count, fileArr) => count + (Array.isArray(fileArr) ? fileArr.length : 1), 0);
-    
-    if (fileCount > 10) {
-      res.status(400).json({
-        success: false,
-        error: 'Too many files. Maximum of 10 files allowed',
-      });
-      return;
+    if (!req.files || Object.keys(req.files).length === 0) {
+      // 파일이 없어도 계속 진행
+      return next();
     }
     
-    // 각 파일 유효성 검사
-    if (!Array.isArray(files)) {
-      const fileArrays = Object.values(files);
-      for (const fileArr of fileArrays) {
-        if (Array.isArray(fileArr)) {
-          for (const file of fileArr) {
-            validateFile(file);
-          }
-        } else {
-          validateFile(fileArr);
+    const uploadedFiles: any[] = [];
+    
+    // 단일 파일 또는 다중 파일 처리
+    const files = req.files.files ? 
+      (Array.isArray(req.files.files) ? req.files.files : [req.files.files]) : 
+      [];
+    
+    // 각 파일 검증 및 처리
+    for (const file of files) {
+      // 파일 확장자 검증
+      const ext = path.extname(file.name).toLowerCase();
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        throw ApiError.badRequest(`지원하지 않는 파일 형식입니다: ${ext}. 허용된 형식: ${ALLOWED_EXTENSIONS.join(', ')}`);
+      }
+      
+      // 파일 크기 검증
+      if (file.size > MAX_FILE_SIZE) {
+        throw ApiError.badRequest(`파일 크기가 너무 큽니다. 최대 허용 크기: ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+      }
+      
+      // 고유한 파일명 생성
+      const filename = `${uuidv4()}${ext}`;
+      const uploadPath = path.join(UPLOAD_DIR, filename);
+      
+      // 파일 저장
+      file.mv(uploadPath, (err: Error) => {
+        if (err) {
+          logger.error(`파일 업로드 오류: ${err.message}`);
+          throw ApiError.internal('파일 업로드 중 오류가 발생했습니다.');
         }
-      }
-    } else {
-      for (const file of files) {
-        validateFile(file);
-      }
+      });
+      
+      // 업로드된 파일 정보 저장
+      uploadedFiles.push({
+        originalName: file.name,
+        filename: filename,
+        path: uploadPath,
+        size: file.size,
+        mimetype: file.mimetype,
+      });
     }
     
+    // 업로드된 파일 정보를 요청 객체에 추가
+    req.uploadedFiles = uploadedFiles;
     next();
-  } catch (error: any) {
-    logger.error(`File upload error: ${error.message}`);
-    res.status(400).json({
-      success: false,
-      error: error.message,
-    });
+  } catch (error) {
+    next(error);
   }
-};
-
-// 파일 유효성 검사 함수
-const validateFile = (file: any) => {
-  // 지원하는 MIME 타입 확인
-  const allowedImageTypes = [
-    'image/jpeg', 
-    'image/png', 
-    'image/gif', 
-    'image/webp', 
-    'image/svg+xml'
-  ];
-  
-  const allowedVideoTypes = [
-    'video/mp4', 
-    'video/mpeg', 
-    'video/webm'
-  ];
-  
-  const allowedDocumentTypes = [
-    'application/pdf',
-    'application/json',
-    'text/plain',
-    'text/csv',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation' // pptx
-  ];
-  
-  const allowedMimeTypes = [
-    ...allowedImageTypes,
-    ...allowedVideoTypes,
-    ...allowedDocumentTypes
-  ];
-  
-  if (!allowedMimeTypes.includes(file.mimetype)) {
-    throw new Error(`File type ${file.mimetype} is not supported`);
-  }
-  
-  // 파일 크기 제한 확인 (더 큰 이미지/동영상 처리를 위해 유형별로 분리)
-  const maxSizes = {
-    image: 10 * 1024 * 1024, // 10MB for images
-    video: 50 * 1024 * 1024, // 50MB for videos
-    document: 25 * 1024 * 1024 // 25MB for documents
-  };
-  
-  let maxSize = maxSizes.document; // 기본값
-  
-  if (allowedImageTypes.includes(file.mimetype)) {
-    maxSize = maxSizes.image;
-  } else if (allowedVideoTypes.includes(file.mimetype)) {
-    maxSize = maxSizes.video;
-  }
-  
-  if (file.size > maxSize) {
-    const sizeInMB = maxSize / (1024 * 1024);
-    throw new Error(`File too large. Maximum size is ${sizeInMB}MB for this file type`);
-  }
-};
-
-export default fileUploadMiddleware; 
+}; 
