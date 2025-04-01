@@ -8,9 +8,11 @@ import helmet from 'helmet';
 import path from 'path';
 import authRoutes from './routes/auth.routes';
 import aiRoutes from './routes/ai.routes';
+import adminRoutes from './routes/admin.routes';
 import { errorHandler } from './middlewares/error.middleware';
 import logger from './utils/logger';
 import authService from './services/auth.service';
+import { setupSwagger } from './utils/swagger';
 
 const app: Application = express();
 
@@ -30,9 +32,13 @@ app.use(fileUpload({
   createParentPath: true,
 })); // 파일 업로드 처리
 
+// Swagger API 문서 설정
+setupSwagger(app);
+
 // 라우트 설정
 app.use('/api/auth', authRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 에러 핸들러
 app.use(errorHandler);
