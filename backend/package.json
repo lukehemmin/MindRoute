@@ -1,15 +1,14 @@
 {
   "name": "mindroute-backend",
   "version": "1.0.0",
-  "type": "commonjs",
   "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "test": "mocha -r ts-node/register 'tests/**/*.test.ts' --timeout 10000",
-    "test:unit": "mocha -r ts-node/register 'tests/unit/**/*.test.ts' --timeout 10000",
-    "test:integration": "mocha -r ts-node/register 'tests/integration/**/*.test.ts' --timeout 10000"
+    "test": "ts-node node_modules/mocha/bin/mocha tests/**/*.test.ts",
+    "test:unit": "ts-node node_modules/mocha/bin/mocha tests/unit/**/*.test.ts",
+    "test:integration": "ts-node node_modules/mocha/bin/mocha tests/integration/**/*.test.ts"
   },
   "keywords": [],
   "author": "",
