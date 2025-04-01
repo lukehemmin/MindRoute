@@ -1,8 +1,8 @@
-import jwt from 'jsonwebtoken';
+import jwt, { Secret, SignOptions } from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../models/user.model';
 import RefreshToken from '../models/refreshtoken.model';
-import config from '../config/auth';
+import authConfig from '../config/auth.config';
 import logger from './logger';
 
 // 토큰 유형 정의
@@ -14,7 +14,7 @@ export enum TokenType {
 // 토큰 페이로드 인터페이스
 export interface TokenPayload {
   type: TokenType;
-  userId: string;
+  userId: number;
   role: string;
   email: string;
   jti?: string; // JWT ID (UUID)
@@ -33,23 +33,24 @@ export const generateToken = (
     email: user.email,
   };
 
-  const options: jwt.SignOptions = {
-    expiresIn: type === TokenType.ACCESS
-      ? config.jwt.accessTokenExpiration
-      : config.jwt.refreshTokenExpiration,
-  };
-
   // 리프레시 토큰의 경우 토큰 식별자(jti) 추가
   if (type === TokenType.REFRESH) {
     payload.jti = jti || uuidv4();
   }
 
+  const secret = type === TokenType.ACCESS
+    ? authConfig.jwt.accessTokenSecret
+    : authConfig.jwt.refreshTokenSecret;
+
+  // jwt.sign에 직접 options 객체 전달
   return jwt.sign(
     payload,
-    type === TokenType.ACCESS
-      ? config.jwt.accessTokenSecret
-      : config.jwt.refreshTokenSecret,
-    options
+    secret as Secret,
+    {
+      expiresIn: type === TokenType.ACCESS
+        ? authConfig.jwt.accessTokenExpiration
+        : authConfig.jwt.refreshTokenExpiration
+    } as SignOptions
   );
 };
 
@@ -69,7 +70,7 @@ export const generateRefreshToken = async (
     const token = generateToken(user, TokenType.REFRESH, tokenId);
     
     // 리프레시 토큰 만료 시간 계산
-    const expiresIn = config.jwt.refreshTokenExpiration;
+    const expiresIn = authConfig.jwt.refreshTokenExpiration;
     const expiryDate = new Date();
     if (typeof expiresIn === 'string') {
       const match = expiresIn.match(/^(\d+)([smhd])$/);
@@ -127,10 +128,10 @@ export const verifyToken = (
 ): TokenPayload => {
   try {
     const secret = type === TokenType.ACCESS
-      ? config.jwt.accessTokenSecret
-      : config.jwt.refreshTokenSecret;
+      ? authConfig.jwt.accessTokenSecret
+      : authConfig.jwt.refreshTokenSecret;
     
-    const decoded = jwt.verify(token, secret) as TokenPayload;
+    const decoded = jwt.verify(token, secret as Secret) as TokenPayload;
     
     // 토큰 유형 확인
     if (decoded.type !== type) {
@@ -186,7 +187,7 @@ export const refreshAccessToken = async (
     // 사용자 찾기
     const user = await User.findByPk(payload.userId);
     
-    if (!user || !user.active) {
+    if (!user || !user.isActive) {
       throw new Error('사용자를 찾을 수 없거나 비활성화되었습니다.');
     }
     
@@ -226,7 +227,7 @@ export const revokeRefreshToken = async (
 
 // 사용자의 모든 리프레시 토큰 취소 함수
 export const revokeAllUserTokens = async (
-  userId: string,
+  userId: number,
   reason: string = '사용자에 의해 모두 취소됨'
 ): Promise<boolean> => {
   try {
