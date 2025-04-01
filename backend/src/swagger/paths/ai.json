@@ -1,0 +1,468 @@
+{
+  "/ai/providers": {
+    "get": {
+      "tags": ["ai"],
+      "summary": "모든 AI 제공업체 조회",
+      "description": "시스템에 등록된 모든 AI 제공업체의 목록을 반환합니다.",
+      "security": [
+        {
+          "bearerAuth": []
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "제공업체 목록 조회 성공",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "example": "openai"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "OpenAI"
+                        },
+                        "description": {
+                          "type": "string",
+                          "example": "OpenAI API 서비스"
+                        },
+                        "isActive": {
+                          "type": "boolean",
+                          "example": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "401": {
+          "description": "인증 실패",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/ai/providers/{providerId}/models": {
+    "get": {
+      "tags": ["ai"],
+      "summary": "특정 제공업체의 모델 목록 조회",
+      "description": "특정 AI 제공업체에서 사용 가능한 모든 모델의 목록을 반환합니다.",
+      "security": [
+        {
+          "bearerAuth": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "providerId",
+          "in": "path",
+          "required": true,
+          "description": "제공업체 ID",
+          "schema": {
+            "type": "string",
+            "example": "openai"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "모델 목록 조회 성공",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "example": "gpt-4"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "GPT-4"
+                        },
+                        "description": {
+                          "type": "string",
+                          "example": "GPT-4 모델"
+                        },
+                        "isActive": {
+                          "type": "boolean",
+                          "example": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "401": {
+          "description": "인증 실패",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "제공업체를 찾을 수 없음",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/ai/providers/{providerId}/chat": {
+    "post": {
+      "tags": ["ai"],
+      "summary": "AI 채팅 완성 요청",
+      "description": "특정 제공업체의 모델을 사용하여 채팅 완성 요청을 수행합니다. 파일 업로드를 지원합니다.",
+      "security": [
+        {
+          "bearerAuth": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "providerId",
+          "in": "path",
+          "required": true,
+          "description": "제공업체 ID",
+          "schema": {
+            "type": "string",
+            "example": "openai"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "multipart/form-data": {
+            "schema": {
+              "type": "object",
+              "required": ["model", "messages"],
+              "properties": {
+                "model": {
+                  "type": "string",
+                  "example": "gpt-4"
+                },
+                "messages": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["role", "content"],
+                    "properties": {
+                      "role": {
+                        "type": "string",
+                        "enum": ["system", "user", "assistant"],
+                        "example": "user"
+                      },
+                      "content": {
+                        "type": "string",
+                        "example": "Hello, how are you today?"
+                      }
+                    }
+                  }
+                },
+                "temperature": {
+                  "type": "number",
+                  "format": "float",
+                  "minimum": 0,
+                  "maximum": 2,
+                  "example": 0.7
+                },
+                "maxTokens": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "example": 1000
+                },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "채팅 완성 응답",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "data": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "example": "chat-1698475839012"
+                      },
+                      "providerId": {
+                        "type": "string",
+                        "example": "openai"
+                      },
+                      "model": {
+                        "type": "string",
+                        "example": "gpt-4"
+                      },
+                      "response": {
+                        "type": "object",
+                        "properties": {
+                          "content": {
+                            "type": "string",
+                            "example": "I'm doing well, thank you for asking! How can I help you today?"
+                          },
+                          "role": {
+                            "type": "string",
+                            "example": "assistant"
+                          }
+                        }
+                      },
+                      "usage": {
+                        "type": "object",
+                        "properties": {
+                          "promptTokens": {
+                            "type": "integer",
+                            "example": 100
+                          },
+                          "completionTokens": {
+                            "type": "integer",
+                            "example": 50
+                          },
+                          "totalTokens": {
+                            "type": "integer",
+                            "example": 150
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "잘못된 요청",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        },
+        "401": {
+          "description": "인증 실패",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "제공업체 또는 모델을 찾을 수 없음",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "/ai/providers/{providerId}/completion": {
+    "post": {
+      "tags": ["ai"],
+      "summary": "AI 텍스트 완성 요청",
+      "description": "특정 제공업체의 모델을 사용하여 텍스트 완성 요청을 수행합니다.",
+      "security": [
+        {
+          "bearerAuth": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "providerId",
+          "in": "path",
+          "required": true,
+          "description": "제공업체 ID",
+          "schema": {
+            "type": "string",
+            "example": "openai"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": ["model", "prompt"],
+              "properties": {
+                "model": {
+                  "type": "string",
+                  "example": "gpt-3.5-turbo"
+                },
+                "prompt": {
+                  "type": "string",
+                  "example": "Complete this sentence: The quick brown fox"
+                },
+                "temperature": {
+                  "type": "number",
+                  "format": "float",
+                  "minimum": 0,
+                  "maximum": 2,
+                  "example": 0.7
+                },
+                "maxTokens": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "example": 50
+                }
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "텍스트 완성 응답",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "data": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "example": "completion-1698475839012"
+                      },
+                      "providerId": {
+                        "type": "string",
+                        "example": "openai"
+                      },
+                      "model": {
+                        "type": "string",
+                        "example": "gpt-3.5-turbo"
+                      },
+                      "response": {
+                        "type": "string",
+                        "example": "jumps over the lazy dog."
+                      },
+                      "usage": {
+                        "type": "object",
+                        "properties": {
+                          "promptTokens": {
+                            "type": "integer",
+                            "example": 50
+                          },
+                          "completionTokens": {
+                            "type": "integer",
+                            "example": 30
+                          },
+                          "totalTokens": {
+                            "type": "integer",
+                            "example": 80
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "잘못된 요청",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        },
+        "401": {
+          "description": "인증 실패",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "제공업체 또는 모델을 찾을 수 없음",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+} 
