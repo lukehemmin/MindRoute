@@ -1,7 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, TokenType } from '../utils/jwt';
-import User from '../models/user.model';
+import jwt from 'jsonwebtoken';
+import { User } from '../models/user.model';
+import { ApiError } from './error.middleware';
 import logger from '../utils/logger';
+import config from '../config/app.config';
+
+interface JwtPayload {
+  id: number;
+  email: string;
+  role: string;
+  exp?: number; // Optional expiration time
+  iat?: number; // Optional issued at time
+}
 
 // 인증된 요청에 사용자 정보를 추가하기 위한 타입 확장
 declare global {
@@ -14,29 +24,8 @@ declare global {
 }
 
 /**
- * 토큰에서 Authorization 헤더를 추출하는 함수
- */
-const extractToken = (req: Request): string | null => {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader) {
-    return null;
-  }
-  
-  // Bearer 토큰 형식 확인
-  const parts = authHeader.split(' ');
-  
-  if (parts.length !== 2 || parts[0] !== 'Bearer') {
-    return null;
-  }
-  
-  return parts[1];
-};
-
-/**
- * 사용자 인증 미들웨어
- * 이 미들웨어는 JWT 액세스 토큰을 검증하고
- * 요청 객체에 사용자 정보를 추가합니다.
+ * 인증 확인 미들웨어
+ * Authorization 헤더의 JWT 토큰을 검증하고 요청 객체에 사용자 정보를 추가합니다.
  */
 export const authenticate = async (
   req: Request,
@@ -44,54 +33,72 @@ export const authenticate = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // 토큰 추출
-    const token = extractToken(req);
-    
+    // Authorization 헤더에서 토큰 가져오기
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw ApiError.unauthorized('인증 토큰이 제공되지 않았습니다.');
+    }
+
+    const token = authHeader.split(' ')[1];
     if (!token) {
-      res.status(401).json({
-        success: false,
-        message: '인증 토큰이 제공되지 않았습니다.',
-      });
-      return;
+      throw ApiError.unauthorized('유효한 인증 토큰이 제공되지 않았습니다.');
     }
-    
+
     // 토큰 검증
-    const decoded = verifyToken(token, TokenType.ACCESS);
-    
-    // 사용자 조회
-    const user = await User.findByPk(decoded.userId);
-    
-    if (!user || !user.active) {
-      res.status(401).json({
-        success: false,
-        message: '사용자를 찾을 수 없거나 비활성화된 계정입니다.',
-      });
-      return;
+    const decoded = jwt.verify(token, config.jwtSecret) as JwtPayload;
+    if (!decoded) {
+      throw ApiError.unauthorized('유효하지 않은 토큰입니다.');
     }
-    
+
+    // 사용자 조회
+    const user = await User.findByPk(decoded.id);
+    if (!user) {
+      throw ApiError.unauthorized('사용자를 찾을 수 없습니다.');
+    }
+
+    // 토큰 만료 여부 확인
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    if (decoded.exp && decoded.exp < currentTimestamp) {
+      throw ApiError.unauthorized('토큰이 만료되었습니다.');
+    }
+
     // 요청 객체에 사용자 정보 추가
     req.user = user;
-    req.token = token;
-    
+
     next();
-  } catch (error: any) {
-    logger.error('인증 오류:', error);
-    
-    // 명확한 오류 메시지 제공
-    if (error.message.includes('만료')) {
-      res.status(401).json({
-        success: false,
-        message: '인증 토큰이 만료되었습니다.',
-        code: 'TOKEN_EXPIRED',
-      });
-    } else {
-      res.status(401).json({
-        success: false,
-        message: '유효하지 않은 인증 토큰입니다.',
-        code: 'INVALID_TOKEN',
-      });
+  } catch (error) {
+    // JWT 검증 오류 처리
+    if (error instanceof jwt.JsonWebTokenError) {
+      return next(ApiError.unauthorized('유효하지 않은 토큰입니다.'));
     }
+    
+    if (error instanceof jwt.TokenExpiredError) {
+      return next(ApiError.unauthorized('토큰이 만료되었습니다.'));
+    }
+    
+    next(error);
   }
+};
+
+/**
+ * 권한 확인 미들웨어
+ * 특정 역할을 가진 사용자만 접근 가능하도록 합니다.
+ */
+export const authorize = (roles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      next(ApiError.unauthorized('인증이 필요합니다.'));
+      return;
+    }
+
+    const hasRole = roles.includes(req.user.role);
+    if (!hasRole) {
+      next(ApiError.forbidden('이 작업을 수행할 권한이 없습니다.'));
+      return;
+    }
+
+    next();
+  };
 };
 
 /**
