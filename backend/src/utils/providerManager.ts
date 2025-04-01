@@ -5,48 +5,271 @@
  * 통신하기 위한 인터페이스를 제공합니다.
  */
 
-// 프로바이더 유형 정의
+import { Provider } from '../models/provider.model';
+import { decrypt } from './encryption';
+import { OpenAIProvider } from '../services/providers/openai.provider';
+import { AnthropicProvider } from '../services/providers/anthropic.provider';
+import { GoogleAIProvider } from '../services/providers/googleai.provider';
+import logger from './logger';
+
+// 제공업체 유형 열거형
 export enum ProviderType {
   OPENAI = 'openai',
   ANTHROPIC = 'anthropic',
   GOOGLE = 'google',
 }
 
-// 프로바이더 설정 인터페이스
-export interface ProviderConfig {
+// 제공업체 모델 인터페이스
+export interface IModel {
   id: string;
-  type: ProviderType;
-  apiKey: string;
-  active: boolean;
-  defaultModel?: string;
-  options?: Record<string, any>;
+  name: string;
+  contextWindow?: number;
+  inputPrice?: number;
+  outputPrice?: number;
+  features?: string[];
 }
 
-// 단일 프로바이더 인터페이스
-export interface Provider {
+// 메시지 유형 인터페이스
+export interface IMessage {
+  role: string;
+  content: string | Array<{
+    type: string;
+    text?: string;
+    image_url?: string;
+    file_url?: string;
+  }>;
+}
+
+// 첨부 파일 인터페이스
+export interface IFile {
+  name: string;
+  type: string;
+  content: Buffer | string;
+  encoding?: string;
+  url?: string;
+}
+
+// 채팅 요청 인터페이스
+export interface IChatRequest {
+  messages: IMessage[];
+  model: string;
+  temperature?: number;
+  maxTokens?: number;
+  files?: IFile[];
+}
+
+// 채팅 응답 인터페이스
+export interface IChatResponse {
+  message: IMessage;
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+}
+
+// 텍스트 완성 요청 인터페이스
+export interface ICompletionRequest {
+  prompt: string;
+  model: string;
+  temperature?: number;
+  maxTokens?: number;
+}
+
+// 텍스트 완성 응답 인터페이스
+export interface ICompletionResponse {
+  text: string;
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+}
+
+// 제공업체 인터페이스
+export interface IProvider {
   getType(): ProviderType;
   isAvailable(): boolean;
-  completion(prompt: string, options?: any): Promise<any>;
+  getModels(): Promise<IModel[]>;
+  chat(request: IChatRequest): Promise<IChatResponse>;
+  completion(request: ICompletionRequest): Promise<ICompletionResponse>;
 }
 
-// 프로바이더 관리자 클래스 (초기 구현)
+// 제공업체 관리자 클래스
 class ProviderManager {
-  private providers: Map<ProviderType, Provider> = new Map();
-  
-  constructor() {
-    // 이후 단계에서 DB에서 프로바이더 구성을 로드할 예정
-    console.log('Provider Manager initialized');
+  private providers: Map<string, IProvider> = new Map();
+  private providerDbCache: Map<string, Provider> = new Map();
+  private initialized = false;
+
+  // 제공업체 인스턴스 생성
+  private createProviderInstance(provider: Provider): IProvider | null {
+    try {
+      const apiKey = decrypt(provider.apiKey);
+      const settings = provider.settings || {};
+      
+      // 제공업체 유형에 따라 적절한 인스턴스 생성
+      switch (provider.type) {
+        case ProviderType.OPENAI:
+          return new OpenAIProvider(apiKey, provider.endpointUrl || undefined, settings);
+        case ProviderType.ANTHROPIC:
+          return new AnthropicProvider(apiKey, settings);
+        case ProviderType.GOOGLE:
+          return new GoogleAIProvider(apiKey, settings);
+        default:
+          logger.error(`지원되지 않는 제공업체 유형: ${provider.type}`);
+          return null;
+      }
+    } catch (error) {
+      logger.error(`제공업체 초기화 오류 (${provider.name}):`, error);
+      return null;
+    }
   }
 
-  // 등록된 프로바이더 목록 반환
-  getAvailableProviders(): ProviderType[] {
-    return Array.from(this.providers.keys());
+  // 모든 제공업체 초기화 및 로드
+  public async initialize(): Promise<void> {
+    try {
+      // 이미 초기화되었다면 스킵
+      if (this.initialized) {
+        return;
+      }
+      
+      // 데이터베이스에서 활성화된 모든 제공업체 로드
+      const providers = await Provider.findAll({
+        where: { active: true }
+      });
+      
+      logger.info(`총 ${providers.length}개의 제공업체를 로드했습니다.`);
+      
+      // 각 제공업체에 대한 인스턴스 생성 및 캐싱
+      for (const provider of providers) {
+        const providerInstance = this.createProviderInstance(provider);
+        
+        if (providerInstance) {
+          this.providers.set(provider.id, providerInstance);
+          this.providerDbCache.set(provider.id, provider);
+          logger.info(`${provider.name} 제공업체가 초기화되었습니다.`);
+        }
+      }
+      
+      this.initialized = true;
+    } catch (error) {
+      logger.error('제공업체 관리자 초기화 오류:', error);
+      throw new Error('제공업체 초기화 실패');
+    }
   }
 
-  // 특정 유형의 프로바이더 반환
-  getProvider(type: ProviderType): Provider | null {
-    return this.providers.get(type) || null;
+  // 개별 제공업체 새로고침
+  public async refreshProvider(providerId: string): Promise<void> {
+    try {
+      const provider = await Provider.findByPk(providerId);
+      
+      if (!provider) {
+        logger.warn(`제공업체 ID를 찾을 수 없음: ${providerId}`);
+        // 캐시에서도 제거
+        this.providers.delete(providerId);
+        this.providerDbCache.delete(providerId);
+        return;
+      }
+      
+      // 비활성화된 경우 캐시에서 제거
+      if (!provider.active) {
+        this.providers.delete(providerId);
+        this.providerDbCache.delete(providerId);
+        logger.info(`${provider.name} 제공업체가 비활성화되어 제거되었습니다.`);
+        return;
+      }
+      
+      // 새 인스턴스 생성 및 캐싱
+      const providerInstance = this.createProviderInstance(provider);
+      
+      if (providerInstance) {
+        this.providers.set(providerId, providerInstance);
+        this.providerDbCache.set(providerId, provider);
+        logger.info(`${provider.name} 제공업체가 새로고침되었습니다.`);
+      } else {
+        // 인스턴스 생성 실패 시 캐시에서 제거
+        this.providers.delete(providerId);
+        this.providerDbCache.delete(providerId);
+        logger.warn(`${provider.name} 제공업체 인스턴스 생성 실패`);
+      }
+    } catch (error) {
+      logger.error(`제공업체 새로고침 오류 (ID: ${providerId}):`, error);
+      throw new Error(`제공업체 새로고침 실패 (ID: ${providerId})`);
+    }
+  }
+
+  // 전체 제공업체 새로고침
+  public async refreshAllProviders(): Promise<void> {
+    try {
+      this.providers.clear();
+      this.providerDbCache.clear();
+      this.initialized = false;
+      await this.initialize();
+      logger.info('모든 제공업체가 새로고침되었습니다.');
+    } catch (error) {
+      logger.error('모든 제공업체 새로고침 오류:', error);
+      throw new Error('제공업체 새로고침 실패');
+    }
+  }
+
+  // 모든 제공업체 정보 반환
+  public async getProviders(): Promise<any[]> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    return Array.from(this.providerDbCache.values()).map(provider => {
+      const providerInstance = this.providers.get(provider.id);
+      return {
+        id: provider.id,
+        name: provider.name,
+        type: provider.type,
+        allowImages: provider.allowImages,
+        allowVideos: provider.allowVideos,
+        allowFiles: provider.allowFiles,
+        available: providerInstance?.isAvailable() || false,
+      };
+    });
+  }
+
+  // 제공업체 ID로 제공업체 인스턴스 조회
+  public async getProvider(providerId: string): Promise<IProvider | null> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    // 캐시된 제공업체 확인
+    const cachedProvider = this.providers.get(providerId);
+    
+    if (cachedProvider) {
+      return cachedProvider;
+    }
+    
+    // 캐시에 없는 경우 제공업체 새로고침 시도
+    await this.refreshProvider(providerId);
+    return this.providers.get(providerId) || null;
+  }
+
+  // 제공업체 ID로 DB 제공업체 정보 조회
+  public async getProviderDb(providerId: string): Promise<Provider | null> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+    
+    // 캐시된 DB 제공업체 확인
+    const cachedProviderDb = this.providerDbCache.get(providerId);
+    
+    if (cachedProviderDb) {
+      return cachedProviderDb;
+    }
+    
+    // 캐시에 없는 경우 제공업체 새로고침 시도
+    await this.refreshProvider(providerId);
+    return this.providerDbCache.get(providerId) || null;
   }
 }
 
-export default new ProviderManager(); 
+// 제공업체 관리자 싱글톤 인스턴스
+const providerManager = new ProviderManager();
+
+export default providerManager; 
