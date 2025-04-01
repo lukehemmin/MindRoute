@@ -2,11 +2,15 @@ import { Router } from 'express';
 import { getProviders, getModels, chatCompletion, textCompletion } from '../controllers/ai.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { handleFileUpload } from '../middlewares/fileUpload.middleware';
+import { aiApiRateLimit } from '../middlewares/rateLimit.middleware';
 
 const router = Router();
 
 // AI 라우트는 모두 인증이 필요합니다.
 router.use(authenticate);
+
+// 속도 제한 미들웨어 적용
+router.use(aiApiRateLimit);
 
 // AI 서비스 상태 확인
 router.get('/status', (req, res) => {
