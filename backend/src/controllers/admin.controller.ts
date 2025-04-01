@@ -22,14 +22,14 @@ export const getAllUsers = async (req: Request, res: Response, next: NextFunctio
     if (search) {
       whereCondition[Op.or] = [
         { email: { [Op.iLike]: `%${search}%` } },
-        { username: { [Op.iLike]: `%${search}%` } },
+        { name: { [Op.iLike]: `%${search}%` } },
       ];
     }
 
     // 사용자 목록 조회
     const { count, rows } = await User.findAndCountAll({
       where: whereCondition,
-      attributes: ['id', 'email', 'username', 'role', 'createdAt'],
+      attributes: ['id', 'email', 'name', 'role', 'createdAt'],
       limit,
       offset,
       order: [['createdAt', 'DESC']],
@@ -60,7 +60,7 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
     const { userId } = req.params;
 
     const user = await User.findByPk(userId, {
-      attributes: ['id', 'email', 'username', 'role', 'createdAt', 'updatedAt'],
+      attributes: ['id', 'email', 'name', 'role', 'createdAt', 'updatedAt'],
     });
 
     if (!user) {
@@ -82,7 +82,7 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
 export const updateUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { userId } = req.params;
-    const { email, username, role, isActive } = req.body;
+    const { email, name, role, isActive } = req.body;
 
     const user = await User.findByPk(userId);
 
@@ -97,7 +97,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
 
     // 필드 업데이트
     user.email = email || user.email;
-    user.username = username || user.username;
+    user.name = name || user.name;
     user.role = role || user.role;
     
     if (isActive !== undefined) {
@@ -112,7 +112,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
       data: {
         id: user.id,
         email: user.email,
-        username: user.username,
+        name: user.name,
         role: user.role,
       },
     });
@@ -128,8 +128,8 @@ export const getAllProviders = async (req: Request, res: Response, next: NextFun
   try {
     const providers = await Provider.findAll({
       attributes: [
-        'id', 'name', 'endpointUrl', 'allowImages', 'allowVideos', 
-        'allowFiles', 'maxTokens', 'isActive', 'createdAt'
+        'id', 'name', 'type', 'endpointUrl', 'allowImages', 'allowVideos', 
+        'allowFiles', 'maxTokens', 'active', 'createdAt'
       ],
       order: [['createdAt', 'DESC']],
     });
@@ -151,7 +151,7 @@ export const createProvider = async (req: Request, res: Response, next: NextFunc
     const { 
       id, name, apiKey, endpointUrl, 
       allowImages, allowVideos, allowFiles, 
-      maxTokens, settings 
+      maxTokens, settings, type
     } = req.body;
 
     // ID 중복 확인
@@ -167,6 +167,7 @@ export const createProvider = async (req: Request, res: Response, next: NextFunc
     const provider = await Provider.create({
       id,
       name,
+      type,
       apiKey: encryptedApiKey,
       endpointUrl,
       allowImages: allowImages !== undefined ? allowImages : false,
@@ -174,7 +175,7 @@ export const createProvider = async (req: Request, res: Response, next: NextFunc
       allowFiles: allowFiles !== undefined ? allowFiles : false,
       maxTokens: maxTokens || null,
       settings: settings || {},
-      isActive: true,
+      active: true,
     });
 
     logger.info(`새 제공업체가 추가되었습니다: ${id} (${name})`);
@@ -201,7 +202,7 @@ export const updateProvider = async (req: Request, res: Response, next: NextFunc
     const { 
       name, apiKey, endpointUrl, 
       allowImages, allowVideos, allowFiles, 
-      maxTokens, settings, isActive 
+      maxTokens, settings, isActive, type
     } = req.body;
 
     const provider = await Provider.findByPk(providerId);
@@ -212,13 +213,14 @@ export const updateProvider = async (req: Request, res: Response, next: NextFunc
 
     // 필드 업데이트
     if (name) provider.name = name;
+    if (type) provider.type = type;
     if (endpointUrl) provider.endpointUrl = endpointUrl;
     if (allowImages !== undefined) provider.allowImages = allowImages;
     if (allowVideos !== undefined) provider.allowVideos = allowVideos;
     if (allowFiles !== undefined) provider.allowFiles = allowFiles;
     if (maxTokens !== undefined) provider.maxTokens = maxTokens;
     if (settings) provider.settings = settings;
-    if (isActive !== undefined) provider.isActive = isActive;
+    if (isActive !== undefined) provider.active = isActive;
 
     // API 키가 제공된 경우 암호화
     if (apiKey) {
@@ -312,7 +314,7 @@ export const getLogs = async (req: Request, res: Response, next: NextFunction): 
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'email', 'username'],
+          attributes: ['id', 'email', 'name'],
         },
         {
           model: Provider,
@@ -351,7 +353,7 @@ export const getLogById = async (req: Request, res: Response, next: NextFunction
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'email', 'username'],
+          attributes: ['id', 'email', 'name'],
         },
         {
           model: Provider,
