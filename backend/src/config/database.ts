@@ -1,37 +1,35 @@
 import { Sequelize } from 'sequelize';
-import config from './config';
+import config from './app.config';
+import logger from '../utils/logger';
 
-const env = process.env.NODE_ENV || 'development';
-const dbConfig = require('../../config/config.json')[env];
+// 데이터베이스 연결 정보
+const DB_HOST = process.env.DB_HOST || 'localhost';
+const DB_PORT = parseInt(process.env.DB_PORT || '5432', 10);
+const DB_NAME = process.env.DB_NAME || 'mindroute';
+const DB_USER = process.env.DB_USER || 'postgres';
+const DB_PASSWORD = process.env.DB_PASSWORD || 'postgres';
+const DB_DIALECT = process.env.DB_DIALECT || 'postgres';
 
-let sequelize: Sequelize;
-
-// 환경 변수 DATABASE_URL이 있으면 사용 (프로덕션 환경용)
-if (dbConfig.use_env_variable && process.env[dbConfig.use_env_variable]) {
-  sequelize = new Sequelize(process.env[dbConfig.use_env_variable] as string, {
-    dialect: 'postgres',
-    logging: false,
-    ssl: true,
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false
-      }
+// Sequelize 인스턴스 생성
+const sequelize = new Sequelize({
+  dialect: DB_DIALECT as any,
+  host: DB_HOST,
+  port: DB_PORT,
+  database: DB_NAME,
+  username: DB_USER,
+  password: DB_PASSWORD,
+  logging: (sql) => {
+    if (config.env === 'development') {
+      logger.debug(sql);
     }
-  });
-} else {
-  // 개발 환경용 설정
-  sequelize = new Sequelize(
-    dbConfig.database,
-    dbConfig.username,
-    dbConfig.password,
-    {
-      host: dbConfig.host,
-      dialect: 'postgres',
-      logging: env === 'development' ? console.log : false
-    }
-  );
-}
+  },
+  pool: {
+    max: 5,
+    min: 0,
+    acquire: 30000,
+    idle: 10000,
+  },
+});
 
 // 데이터베이스 연결 테스트 함수
 export const testConnection = async (): Promise<boolean> => {
