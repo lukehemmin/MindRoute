@@ -6,9 +6,9 @@
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "test": "ts-node node_modules/mocha/bin/mocha tests/**/*.test.ts",
-    "test:unit": "ts-node node_modules/mocha/bin/mocha tests/unit/**/*.test.ts",
-    "test:integration": "ts-node node_modules/mocha/bin/mocha tests/integration/**/*.test.ts"
+    "test": "mocha --require ts-node/register 'tests/**/*.test.ts'",
+    "test:unit": "mocha --require ts-node/register 'tests/unit/**/*.test.ts'",
+    "test:integration": "mocha --require ts-node/register 'tests/integration/**/*.test.ts'"
   },
   "keywords": [],
   "author": "",
@@ -59,10 +59,9 @@
     "@types/express-rate-limit": "^6.0.2",
     "@types/mocha": "^10.0.10",
     "@types/sinon": "^17.0.4",
-    "chai": "^5.2.0",
+    "chai": "^4.3.4",
     "mocha": "^11.1.0",
     "sinon": "^20.0.0",
-    "ts-mocha": "^11.1.0",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.8.2"

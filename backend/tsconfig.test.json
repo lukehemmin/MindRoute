@@ -2,13 +2,10 @@
   "extends": "./tsconfig.json",
   "ts-node": {
     "files": true,
-    "transpileOnly": true,
-    "compilerOptions": {
-      "module": "commonjs"
-    }
+    "transpileOnly": true
   },
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "NodeNext",
     "types": ["node", "mocha"]
   }
 } 
