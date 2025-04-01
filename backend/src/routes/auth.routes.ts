@@ -1,8 +1,12 @@
-import express from 'express';
+import { Router } from 'express';
 import { register, login, logout, refresh, me, changePassword } from '../controllers/auth.controller';
 import { authenticate } from '../middlewares/auth.middleware';
+import { authRateLimit } from '../middlewares/rateLimit.middleware';
 
-const router = express.Router();
+const router = Router();
+
+// 속도 제한 미들웨어 적용
+router.use(authRateLimit);
 
 // 공개 엔드포인트
 router.post('/register', register);
