@@ -1,16 +1,17 @@
 import express from 'express';
-import { register, login, refreshTokenController } from '../controllers/auth.controller';
-import { validateRegister, validateLogin, validateRefreshToken } from '../middlewares/validators/auth.validator';
+import { register, login, logout, refresh, me, changePassword } from '../controllers/auth.controller';
+import { authenticate } from '../middlewares/auth.middleware';
 
 const router = express.Router();
 
-// 사용자 등록 엔드포인트
-router.post('/register', validateRegister, register);
+// 공개 엔드포인트
+router.post('/register', register);
+router.post('/login', login);
+router.post('/refresh', refresh);
+router.post('/logout', logout);
 
-// 로그인 엔드포인트
-router.post('/login', validateLogin, login);
-
-// 토큰 갱신 엔드포인트
-router.post('/refresh-token', validateRefreshToken, refreshTokenController);
+// 인증 필요 엔드포인트
+router.get('/me', authenticate, me);
+router.post('/change-password', authenticate, changePassword);
 
 export default router; 
