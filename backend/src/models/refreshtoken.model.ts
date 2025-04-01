@@ -4,7 +4,7 @@ import User from './user.model';
 
 export interface RefreshTokenAttributes {
   id: string;
-  userId: string;
+  userId: number;
   token: string;
   expires: Date;
   userAgent?: string;
@@ -17,7 +17,7 @@ export interface RefreshTokenAttributes {
 
 export class RefreshToken extends Model<RefreshTokenAttributes> implements RefreshTokenAttributes {
   public id!: string;
-  public userId!: string;
+  public userId!: number;
   public token!: string;
   public expires!: Date;
   public userAgent!: string | undefined;
@@ -47,7 +47,7 @@ RefreshToken.init(
       allowNull: false,
     },
     userId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'users',
