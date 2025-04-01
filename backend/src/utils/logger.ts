@@ -1,61 +1,59 @@
 import winston from 'winston';
 import path from 'path';
+import fs from 'fs';
 
-// 로그 레벨 정의
-const levels = {
-  error: 0,
-  warn: 1,
-  info: 2,
-  http: 3,
-  debug: 4,
-};
-
-// 개발/프로덕션 모드에 따른 로그 레벨 선택
-const level = () => {
-  const env = process.env.NODE_ENV || 'development';
-  return env === 'development' ? 'debug' : 'info';
-};
-
-// 로그 색상 설정
-const colors = {
-  error: 'red',
-  warn: 'yellow',
-  info: 'green',
-  http: 'magenta',
-  debug: 'blue',
-};
-
-winston.addColors(colors);
+// 로그 디렉토리 생성
+const logDir = path.join(__dirname, '../../logs');
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir, { recursive: true });
+}
 
 // 로그 포맷 설정
-const format = winston.format.combine(
-  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
-  winston.format.colorize({ all: true }),
-  winston.format.printf(
-    (info) => `${info.timestamp} ${info.level}: ${info.message}`,
-  ),
-);
-
-// 로그 저장 경로 설정
-const logDir = 'logs';
-const filename = path.join(logDir, 'app.log');
-
-// 트랜스포트 설정 (콘솔 및 파일)
-const transports = [
-  new winston.transports.Console(),
-  new winston.transports.File({
-    filename: 'logs/error.log',
-    level: 'error',
-  }),
-  new winston.transports.File({ filename }),
-];
-
-// 로거 생성
-const logger = winston.createLogger({
-  level: level(),
-  levels,
-  format,
-  transports,
+const logFormat = winston.format.printf(({ level, message, timestamp }) => {
+  return `${timestamp} ${level}: ${message}`;
 });
+
+// 로거 인스턴스 생성
+const logger = winston.createLogger({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  format: winston.format.combine(
+    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    winston.format.errors({ stack: true }),
+    logFormat
+  ),
+  transports: [
+    // 콘솔 출력
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        logFormat
+      ),
+    }),
+    // 일반 로그 파일
+    new winston.transports.File({
+      filename: path.join(logDir, 'combined.log'),
+      maxsize: 5242880, // 5MB
+      maxFiles: 5,
+    }),
+    // 에러 로그 파일
+    new winston.transports.File({
+      filename: path.join(logDir, 'error.log'),
+      level: 'error',
+      maxsize: 5242880, // 5MB
+      maxFiles: 5,
+    }),
+  ],
+  exitOnError: false,
+});
+
+// 개발 환경에서는 콘솔에 컬러로 로깅
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.simple()
+    ),
+  }));
+}
 
 export default logger; 
