@@ -1,4 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/database';
 import { ProviderType } from '../utils/providerManager';
 import { encrypt, decrypt } from '../utils/encryption';
@@ -7,36 +7,32 @@ import { encrypt, decrypt } from '../utils/encryption';
 export interface ProviderAttributes {
   id: string;
   name: string;
-  type: ProviderType;
+  type: string;
   apiKey: string;
-  endpointUrl?: string;
+  endpointUrl: string | null;
   allowImages: boolean;
   allowVideos: boolean;
   allowFiles: boolean;
   maxTokens: number | null;
-  settings?: any;
+  settings: Record<string, any>;
   active: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-// 제공업체 생성 시 선택적 속성
-export interface ProviderCreationAttributes extends Optional<ProviderAttributes, 'id' | 'createdAt' | 'updatedAt' | 'endpointUrl' | 'settings' | 'active'> {}
-
 // 제공업체 모델 클래스
-class Provider extends Model<ProviderAttributes, ProviderCreationAttributes> implements ProviderAttributes {
+export class Provider extends Model<ProviderAttributes> implements ProviderAttributes {
   public id!: string;
   public name!: string;
-  public type!: ProviderType;
+  public type!: string;
   public apiKey!: string;
-  public endpointUrl!: string | undefined;
+  public endpointUrl!: string | null;
   public allowImages!: boolean;
   public allowVideos!: boolean;
   public allowFiles!: boolean;
   public maxTokens!: number | null;
-  public settings!: any;
+  public settings!: Record<string, any>;
   public active!: boolean;
-
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -50,16 +46,19 @@ Provider.init(
   {
     id: {
       type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
+      allowNull: false,
     },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
     },
     type: {
-      type: DataTypes.ENUM(...Object.values(ProviderType)),
+      type: DataTypes.STRING,
       allowNull: false,
+      validate: {
+        isIn: [Object.values(ProviderType)],
+      },
     },
     apiKey: {
       type: DataTypes.TEXT,
@@ -71,33 +70,38 @@ Provider.init(
     },
     allowImages: {
       type: DataTypes.BOOLEAN,
+      allowNull: false,
       defaultValue: false,
     },
     allowVideos: {
       type: DataTypes.BOOLEAN,
+      allowNull: false,
       defaultValue: false,
     },
     allowFiles: {
       type: DataTypes.BOOLEAN,
+      allowNull: false,
       defaultValue: false,
     },
     maxTokens: {
       type: DataTypes.INTEGER,
-      allowNull: true, // null은 무제한을 의미
+      allowNull: true,
     },
     settings: {
       type: DataTypes.JSONB,
-      allowNull: true,
+      allowNull: false,
+      defaultValue: {},
     },
     active: {
       type: DataTypes.BOOLEAN,
+      allowNull: false,
       defaultValue: true,
     },
   },
   {
     sequelize,
-    modelName: 'Provider',
     tableName: 'providers',
+    timestamps: true,
     hooks: {
       // API 키 암호화 훅
       beforeCreate: async (provider: Provider) => {
