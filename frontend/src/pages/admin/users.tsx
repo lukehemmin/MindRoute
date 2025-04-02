@@ -39,7 +39,7 @@ const UsersAdmin: React.FC = () => {
       
       if (response.success) {
         setUsers(response.data.items);
-        setTotalPages(response.data.pagination.totalPages);
+        setTotalPages(response.data.totalPages);
       } else {
         setError('사용자 목록을 가져오는데 실패했습니다.');
       }
