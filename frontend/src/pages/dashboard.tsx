@@ -2,185 +2,174 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/layout/Layout';
 import useAuthStore from '../utils/authStore';
-import { getProviders } from '../services/ai';
-import { Provider } from '../services/ai';
+import { FiServer, FiKey, FiClock, FiActivity } from 'react-icons/fi';
+import { getUserStats, UsageStats } from '../services/user';
 
 const Dashboard: React.FC = () => {
+  const { isAuthenticated, loading: isLoading } = useAuthStore();
   const router = useRouter();
-  const { isAuthenticated, user } = useAuthStore();
-  const [providers, setProviders] = useState<Provider[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>('');
+  const [stats, setStats] = useState<UsageStats>({
+    totalApiCalls: 0,
+    totalTokensUsed: 0,
+    activeProviders: 0,
+    lastUsedTime: '없음'
+  });
+  const [isLoadingStats, setIsLoadingStats] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // 인증되지 않은 경우 로그인 페이지로 리다이렉트
-    if (!isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       router.push('/login');
-      return;
+    } else if (isAuthenticated) {
+      fetchUsageStats();
     }
+  }, [isAuthenticated, isLoading, router]);
 
-    // 제공업체 목록 가져오기
-    const fetchProviders = async () => {
-      try {
-        setLoading(true);
-        const result = await getProviders();
-        
-        if (result.success) {
-          setProviders(result.data);
-        } else {
-          setError('제공업체 목록을 가져오는데 실패했습니다.');
-        }
-      } catch (err) {
-        console.error('제공업체 목록 조회 오류:', err);
-        setError('제공업체 목록을 가져오는 중 오류가 발생했습니다.');
-      } finally {
-        setLoading(false);
+  const fetchUsageStats = async () => {
+    setIsLoadingStats(true);
+    setError(null);
+
+    try {
+      const response = await getUserStats();
+      
+      if (response.success) {
+        setStats(response.data);
+      } else {
+        setError(response.message || '통계 데이터를 가져오는데 실패했습니다.');
       }
-    };
+    } catch (err) {
+      setError('통계 데이터를 가져오는 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoadingStats(false);
+    }
+  };
 
-    fetchProviders();
-  }, [isAuthenticated, router]);
+  const formatNumber = (num: number): string => {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
 
-  // 통계 데이터 (실제로는 API에서 가져와야 함)
-  const stats = [
-    { name: '총 API 호출 수', value: '24,521' },
-    { name: '총 토큰 사용량', value: '2,103,430' },
-    { name: '활성 제공업체', value: providers.filter(p => p.available).length.toString() },
-    { name: '마지막 사용', value: '1시간 전' },
+  const quickAccessItems = [
+    {
+      title: 'API 관리',
+      description: 'API 키 발급 및 관리',
+      icon: <FiKey className="text-blue-500 text-2xl" />,
+      path: '/api-keys'
+    },
+    {
+      title: '이용 기록',
+      description: 'API 호출 기록 조회',
+      icon: <FiClock className="text-green-500 text-2xl" />,
+      path: '/usage-logs'
+    },
+    {
+      title: '프로필 설정',
+      description: '개인 정보 관리',
+      icon: <FiServer className="text-purple-500 text-2xl" />,
+      path: '/profile'
+    },
+    {
+      title: '계정 설정',
+      description: '계정 및 보안 설정',
+      icon: <FiActivity className="text-orange-500 text-2xl" />,
+      path: '/account'
+    }
   ];
 
   return (
     <Layout>
-      <div className="py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-semibold text-gray-900">대시보드</h1>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold mb-6">대시보드</h1>
+        
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-gray-500 text-sm font-medium mb-1">총 API 호출</h3>
+            <div className="flex items-center">
+              <span className="text-2xl font-bold">
+                {isLoadingStats ? '로딩 중...' : formatNumber(stats.totalApiCalls)}
+              </span>
+              <span className="text-green-500 ml-2">
+                <FiActivity />
+              </span>
+            </div>
+          </div>
           
-          <div className="mt-2">
-            <p className="text-gray-500">
-              안녕하세요, <span className="font-medium text-gray-900">{user?.name}</span>님!
-            </p>
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-gray-500 text-sm font-medium mb-1">총 토큰 사용량</h3>
+            <div className="flex items-center">
+              <span className="text-2xl font-bold">
+                {isLoadingStats ? '로딩 중...' : formatNumber(stats.totalTokensUsed)}
+              </span>
+              <span className="text-blue-500 ml-2">
+                <FiServer />
+              </span>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-gray-500 text-sm font-medium mb-1">활성 제공업체</h3>
+            <div className="flex items-center">
+              <span className="text-2xl font-bold">
+                {isLoadingStats ? '로딩 중...' : stats.activeProviders}
+              </span>
+              <span className="text-purple-500 ml-2">
+                <FiServer />
+              </span>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-gray-500 text-sm font-medium mb-1">마지막 사용</h3>
+            <div className="flex items-center">
+              <span className="text-xl font-bold text-gray-700">
+                {isLoadingStats ? '로딩 중...' : stats.lastUsedTime}
+              </span>
+              <span className="text-orange-500 ml-2">
+                <FiClock />
+              </span>
+            </div>
           </div>
         </div>
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* 통계 카드 */}
-          <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {stats.map((stat) => (
-              <div key={stat.name} className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="px-4 py-5 sm:p-6">
-                  <div className="flex items-center">
-                    <div className="ml-5 w-0 flex-1">
-                      <dt className="text-sm font-medium text-gray-500 truncate">{stat.name}</dt>
-                      <dd className="flex items-baseline">
-                        <div className="text-2xl font-semibold text-gray-900">{stat.value}</div>
-                      </dd>
-                    </div>
-                  </div>
+
+        <div className="mb-8">
+          <h2 className="text-xl font-bold mb-4">빠른 액세스</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {quickAccessItems.map((item, index) => (
+              <div 
+                key={index}
+                className="bg-white rounded-lg shadow p-6 hover:shadow-md transition cursor-pointer"
+                onClick={() => router.push(item.path)}
+              >
+                <div className="flex items-center mb-2">
+                  {item.icon}
+                  <h3 className="text-lg font-medium ml-2">{item.title}</h3>
                 </div>
+                <p className="text-gray-500">{item.description}</p>
               </div>
             ))}
           </div>
-          
-          {/* 제공업체 목록 */}
-          <div className="mt-8">
-            <h2 className="text-lg font-medium text-gray-900">AI 제공업체</h2>
-            
-            {loading ? (
-              <div className="mt-4 flex justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-              </div>
-            ) : error ? (
-              <div className="mt-4 bg-red-50 p-4 rounded-md">
-                <div className="text-sm text-red-700">{error}</div>
-              </div>
-            ) : (
-              <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {providers.map((provider) => (
-                  <div
-                    key={provider.id}
-                    className="bg-white overflow-hidden shadow rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md"
-                    onClick={() => router.push(`/providers/${provider.id}`)}
-                  >
-                    <div className="px-4 py-5 sm:p-6">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-medium text-gray-900">{provider.name}</h3>
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            provider.available
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
-                        >
-                          {provider.available ? '활성' : '비활성'}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-gray-500">{provider.type}</p>
-                      <div className="mt-4 space-y-2 text-sm text-gray-500">
-                        <div className="flex">
-                          <div className="w-32">이미지 지원:</div>
-                          <div>{provider.allowImages ? '가능' : '불가능'}</div>
-                        </div>
-                        <div className="flex">
-                          <div className="w-32">비디오 지원:</div>
-                          <div>{provider.allowVideos ? '가능' : '불가능'}</div>
-                        </div>
-                        <div className="flex">
-                          <div className="w-32">파일 지원:</div>
-                          <div>{provider.allowFiles ? '가능' : '불가능'}</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 px-4 py-4 sm:px-6">
-                      <div className="text-sm">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/playground?provider=${provider.id}`);
-                          }}
-                          className="font-medium text-primary-600 hover:text-primary-500"
-                        >
-                          플레이그라운드에서 사용하기
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          
-          {/* 빠른 액세스 버튼 */}
-          <div className="mt-8">
-            <h2 className="text-lg font-medium text-gray-900">빠른 액세스</h2>
-            <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              <button
-                onClick={() => router.push('/playground')}
-                className="relative block w-full border-2 border-gray-300 border-dashed rounded-lg p-12 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              >
-                <span className="block text-sm font-medium text-gray-900">AI 플레이그라운드</span>
-              </button>
-              
-              <button
-                onClick={() => router.push('/history')}
-                className="relative block w-full border-2 border-gray-300 border-dashed rounded-lg p-12 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              >
-                <span className="block text-sm font-medium text-gray-900">이용 기록</span>
-              </button>
-              
-              <button
-                onClick={() => router.push('/providers')}
-                className="relative block w-full border-2 border-gray-300 border-dashed rounded-lg p-12 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              >
-                <span className="block text-sm font-medium text-gray-900">제공업체 관리</span>
-              </button>
-              
-              <button
-                onClick={() => router.push('/profile')}
-                className="relative block w-full border-2 border-gray-300 border-dashed rounded-lg p-12 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              >
-                <span className="block text-sm font-medium text-gray-900">계정 설정</span>
-              </button>
-            </div>
+        </div>
+
+        <div className="mb-8">
+          <h2 className="text-xl font-bold mb-4">API 키 관리</h2>
+          <div className="bg-white rounded-lg shadow p-6">
+            <p className="text-gray-700 mb-4">
+              API 키를 발급하여 외부 애플리케이션이나 서비스에서 MindRoute API를 사용할 수 있습니다.
+            </p>
+            <button 
+              className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded transition"
+              onClick={() => router.push('/api-keys')}
+            >
+              <span className="flex items-center">
+                <FiKey className="mr-1" />
+                API 키 관리하기
+              </span>
+            </button>
           </div>
         </div>
       </div>
