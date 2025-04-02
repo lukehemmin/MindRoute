@@ -94,10 +94,8 @@ const RegisterPage: React.FC = () => {
         formData.password
       );
       
-      if (response.success && response.data) {
-        // 회원가입 성공 후 자동 로그인
-        const { user, accessToken, refreshToken } = response.data;
-        setAuth(user, accessToken, refreshToken);
+      if (response.success) {
+        // 회원가입 성공 시 auth 서비스에서 이미 토큰과 사용자 정보를 저장했으므로 바로 리다이렉트
         router.push('/dashboard');
       } else {
         // 회원가입 실패
