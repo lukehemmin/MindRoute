@@ -1,21 +1,21 @@
 {
   "development": {
-    "username": "lukehemmin",
-    "password": "Ps.11651844",
+    "username": "exampleusername",
+    "password": "examplepassword",
     "database": "mindroute_dev",
     "host": "192.168.0.228",
     "dialect": "postgres"
   },
   "test": {
-    "username": "lukehemmin",
-    "password": "Ps.11651844",
+    "username": "exampleusername",
+    "password": "examplepassword",
     "database": "mindroute_test",
     "host": "192.168.0.228",
     "dialect": "postgres"
   },
   "production": {
-    "username": "lukehemmin",
-    "password": "Ps.11651844",
+    "username": "exampleusername",
+    "password": "examplepassword",
     "database": "mindroute_prod",
     "host": "192.168.0.228",
     "dialect": "postgres",
