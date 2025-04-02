@@ -52,7 +52,7 @@ const LogsAdmin: React.FC = () => {
       
       if (response.success) {
         setLogs(response.data.items);
-        setTotalPages(response.data.pagination.totalPages);
+        setTotalPages(response.data.totalPages);
       } else {
         setError('로그 목록을 가져오는데 실패했습니다.');
       }
