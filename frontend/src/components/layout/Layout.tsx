@@ -1,49 +1,49 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
-import useAuthStore from '../../utils/authStore';
+import { useAuthStore } from '../../store/auth';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { isAuthenticated, loading } = useAuthStore();
-  
-  // 로딩 상태 초기화
+  const router = useRouter();
+  const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // 인증 상태 체크
   useEffect(() => {
-    const initLoading = setTimeout(() => {
-      useAuthStore.getState().setLoading(false);
-    }, 1000);
-    
-    return () => clearTimeout(initLoading);
-  }, []);
+    checkAuth();
+  }, [checkAuth]);
 
-  // 로딩 중일 때 표시할 화면
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
+  // 인증되지 않은 사용자 리다이렉트 처리
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && router.pathname !== '/login' && router.pathname !== '/register') {
+      router.push('/login');
+    }
+  }, [isAuthenticated, isLoading, router]);
 
-  // 로그인 여부에 따라 다른 레이아웃 적용
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        <main className="container mx-auto px-4 py-8">{children}</main>
-      </div>
-    );
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  // 로그인 페이지에서는 레이아웃 없이 표시
+  if (router.pathname === '/login' || router.pathname === '/register' || isLoading) {
+    return <>{children}</>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar />
-      <div className="flex flex-1">
-        <Sidebar />
-        <main className="flex-1 p-6">{children}</main>
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Navbar toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
+        
+        <main className="flex-1 overflow-y-auto pt-16 pb-6">
+          {children}
+        </main>
       </div>
     </div>
   );
