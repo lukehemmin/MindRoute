@@ -1,4 +1,5 @@
 import { api } from '../utils/api';
+import axios, { AxiosRequestConfig } from 'axios';
 
 // 제공업체 인터페이스
 export interface Provider {
@@ -255,4 +256,31 @@ export const textCompletion = async (providerId: string, model: string, prompt: 
     ...options,
   });
   return response.data;
+};
+
+// 이미지 생성 요청을 보냅니다.
+export const generateImage = async (
+  providerId: string,
+  modelId: string,
+  prompt: string
+): Promise<AIResponse> => {
+  try {
+    const payload = {
+      providerId,
+      modelId,
+      prompt
+    };
+
+    const response = await api.post('/ai/generate-image', payload);
+    return {
+      success: true,
+      data: response.data
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.response?.data?.message || '이미지 생성 요청을 처리하는데 실패했습니다.',
+      data: { imageUrl: '' }
+    };
+  }
 }; 
