@@ -21,9 +21,12 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, isAdmin } = useAuthStore();
   
-  const isAdmin = user?.role === 'admin';
+  // 명시적으로 사용자 권한 확인
+  const userIsAdmin = user?.role === 'admin';
+  console.log('사용자 정보:', user);
+  console.log('관리자 권한:', userIsAdmin);
 
   const menuItems = [
     {
@@ -84,7 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   };
 
   return (
-    <div className={`bg-white fixed inset-y-0 left-0 z-30 w-64 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:inset-auto md:h-full shadow-md`}>
+    <div className={`bg-white fixed inset-y-0 left-0 z-10 w-64 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:inset-auto md:h-full shadow-md`}>
       <div className="flex items-center justify-center h-16 border-b border-gray-200">
         <span className="text-xl font-bold text-primary-600">MindRoute</span>
       </div>
@@ -111,7 +114,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           ))}
         </nav>
         
-        {isAdmin && (
+        {userIsAdmin && (
           <div className="mt-8">
             <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
               관리자 설정
