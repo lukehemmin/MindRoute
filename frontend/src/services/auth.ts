@@ -14,7 +14,7 @@ export interface AuthResponse {
 // 로그인
 export const login = async (email: string, password: string): Promise<AuthResponse> => {
   try {
-    const response = await api.post('/auth/login', { email, password });
+    const response = await api.post('/api/auth/login', { email, password });
     return {
       success: true,
       data: response.data
@@ -30,7 +30,7 @@ export const login = async (email: string, password: string): Promise<AuthRespon
 // 회원가입
 export const register = async (name: string, email: string, password: string): Promise<AuthResponse> => {
   try {
-    const response = await api.post('/auth/register', { name, email, password });
+    const response = await api.post('/api/auth/register', { name, email, password });
     return {
       success: true,
       data: response.data
@@ -46,7 +46,7 @@ export const register = async (name: string, email: string, password: string): P
 // 비밀번호 재설정 이메일 요청
 export const requestPasswordReset = async (email: string): Promise<{ success: boolean; message: string }> => {
   try {
-    await api.post('/auth/request-password-reset', { email });
+    await api.post('/api/auth/request-password-reset', { email });
     return {
       success: true,
       message: '비밀번호 재설정 링크가 이메일로 전송되었습니다.',
@@ -62,7 +62,7 @@ export const requestPasswordReset = async (email: string): Promise<{ success: bo
 // 비밀번호 재설정
 export const resetPassword = async (token: string, password: string): Promise<{ success: boolean; message: string }> => {
   try {
-    await api.post('/auth/reset-password', { token, password });
+    await api.post('/api/auth/reset-password', { token, password });
     return {
       success: true,
       message: '비밀번호가 성공적으로 재설정되었습니다.',
@@ -78,7 +78,7 @@ export const resetPassword = async (token: string, password: string): Promise<{ 
 // 현재 사용자 정보 가져오기
 export const getCurrentUser = async (): Promise<AuthResponse> => {
   try {
-    const response = await api.get('/users/me');
+    const response = await api.get('/api/users/me');
     return {
       success: true,
       data: {
@@ -98,7 +98,7 @@ export const getCurrentUser = async (): Promise<AuthResponse> => {
 // 로그아웃
 export const logout = async (): Promise<{ success: boolean; message: string }> => {
   try {
-    await api.post('/auth/logout');
+    await api.post('/api/auth/logout');
     return {
       success: true,
       message: '로그아웃되었습니다.',
@@ -114,7 +114,7 @@ export const logout = async (): Promise<{ success: boolean; message: string }> =
 // 비밀번호 변경
 export const changePassword = async (currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
   try {
-    await api.post('/auth/change-password', {
+    await api.post('/api/auth/change-password', {
       currentPassword,
       newPassword,
     });
@@ -132,7 +132,7 @@ export const changePassword = async (currentPassword: string, newPassword: strin
 
 // 사용자 프로필 정보 가져오기
 export const getProfile = async () => {
-  const response = await api.get<AuthResponse>('/auth/me');
+  const response = await api.get<AuthResponse>('/api/auth/me');
   return response.data;
 };
 
@@ -143,7 +143,7 @@ export interface ProfileUpdateParams {
 
 export const updateProfile = async (params: ProfileUpdateParams): Promise<{ success: boolean; message?: string; data?: User }> => {
   try {
-    const response = await api.put('/users/profile', params);
+    const response = await api.put('/api/users/profile', params);
     return {
       success: true,
       data: response.data.user
@@ -164,7 +164,7 @@ export interface PasswordUpdateParams {
 
 export const updatePassword = async (params: PasswordUpdateParams): Promise<{ success: boolean; message: string }> => {
   try {
-    await api.post('/users/change-password', params);
+    await api.post('/api/users/change-password', params);
     return {
       success: true,
       message: '비밀번호가 성공적으로 변경되었습니다.',
