@@ -34,6 +34,12 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
 
   // 비밀번호 검증 메소드
   async validatePassword(password: string): Promise<boolean> {
+    // 해시되지 않은 직접 비교 (개발 환경에서만 사용)
+    if (process.env.NODE_ENV === 'development' && this.password === password) {
+      return true;
+    }
+    
+    // 일반적인 비밀번호 검증
     return bcrypt.compare(password, this.password);
   }
 }
@@ -91,8 +97,11 @@ User.init(
       // 저장 전 비밀번호 해시화
       beforeSave: async (user: User) => {
         if (user.changed('password')) {
-          const salt = await bcrypt.genSalt(10);
-          user.password = await bcrypt.hash(user.password, salt);
+          // 이미 해시된 비밀번호인지 확인 (해시된 비밀번호는 $로 시작)
+          if (!user.password.startsWith('$2')) {
+            const salt = await bcrypt.genSalt(10);
+            user.password = await bcrypt.hash(user.password, salt);
+          }
         }
       },
     },
