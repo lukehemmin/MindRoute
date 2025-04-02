@@ -11,7 +11,7 @@ import {
 } from '../utils/providerManager';
 
 interface ChatOptions {
-  userId: string;
+  userId: number;
   providerId: string;
   messages: IMessage[];
   model: string;
@@ -21,7 +21,7 @@ interface ChatOptions {
 }
 
 interface CompletionOptions {
-  userId: string;
+  userId: number;
   providerId: string;
   prompt: string;
   model: string;
@@ -239,7 +239,7 @@ class AIService {
    * 요청 로깅
    */
   private async logRequest(data: {
-    userId: string | null;
+    userId: number | null;
     providerId: string;
     requestType: string;
     requestBody: any;
