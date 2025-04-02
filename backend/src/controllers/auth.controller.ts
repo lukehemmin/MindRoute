@@ -38,10 +38,29 @@ export const login = async (
       ipAddress
     );
     
+    // 사용자 정보 조회
+    const user = await User.findOne({ where: { email } });
+    
+    if (!user) {
+      throw new Error('사용자 정보를 찾을 수 없습니다.');
+    }
+    
+    const userData = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      createdAt: user.createdAt
+    };
+    
+    // 토큰과 사용자 정보 반환
     res.json({
       success: true,
       message: '로그인되었습니다.',
-      data: tokens,
+      data: {
+        ...tokens,
+        user: userData
+      },
     });
   } catch (error: any) {
     logger.error('로그인 컨트롤러 오류:', error);
