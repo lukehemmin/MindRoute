@@ -67,7 +67,7 @@ export const updateUserProfile = async (data: Partial<UserProfile>): Promise<{su
 };
 
 // 사용자 통계 데이터 조회
-export const getUserStats = async (): Promise<{success: boolean, data: UsageStats, message?: string}> => {
+export const getUserStats = async (): Promise<{success: boolean, data: UsageStats, message?: string, status?: number}> => {
   try {
     const response = await api.get('/api/users/stats');
     return {
@@ -78,6 +78,7 @@ export const getUserStats = async (): Promise<{success: boolean, data: UsageStat
     return {
       success: false,
       message: error.response?.data?.message || '사용 통계 데이터를 가져오는데 실패했습니다.',
+      status: error.response?.status,
       data: {
         totalApiCalls: 0,
         totalTokensUsed: 0,
@@ -89,7 +90,7 @@ export const getUserStats = async (): Promise<{success: boolean, data: UsageStat
 };
 
 // API 키 목록 조회
-export const getApiKeys = async (): Promise<{success: boolean, data: ApiKey[], message?: string}> => {
+export const getApiKeys = async (): Promise<{success: boolean, data: ApiKey[], message?: string, status?: number}> => {
   try {
     const response = await api.get('/api/users/api-keys');
     return {
@@ -100,13 +101,14 @@ export const getApiKeys = async (): Promise<{success: boolean, data: ApiKey[], m
     return {
       success: false,
       message: error.response?.data?.message || 'API 키 목록을 가져오는데 실패했습니다.',
+      status: error.response?.status,
       data: []
     };
   }
 };
 
 // API 키 생성
-export const createApiKey = async (name: string): Promise<{success: boolean, data: ApiKey, message?: string}> => {
+export const createApiKey = async (name: string): Promise<{success: boolean, data: ApiKey, message?: string, status?: number}> => {
   try {
     const response = await api.post('/api/users/api-keys', { name });
     return {
@@ -117,13 +119,14 @@ export const createApiKey = async (name: string): Promise<{success: boolean, dat
     return {
       success: false,
       message: error.response?.data?.message || 'API 키 생성에 실패했습니다.',
+      status: error.response?.status,
       data: {} as ApiKey
     };
   }
 };
 
 // API 키 삭제
-export const deleteApiKey = async (keyId: string): Promise<{success: boolean, message?: string}> => {
+export const deleteApiKey = async (keyId: string): Promise<{success: boolean, message?: string, status?: number}> => {
   try {
     await api.delete(`/api/users/api-keys/${keyId}`);
     return {
@@ -132,7 +135,8 @@ export const deleteApiKey = async (keyId: string): Promise<{success: boolean, me
   } catch (error: any) {
     return {
       success: false,
-      message: error.response?.data?.message || 'API 키 삭제에 실패했습니다.'
+      message: error.response?.data?.message || 'API 키 삭제에 실패했습니다.',
+      status: error.response?.status
     };
   }
 }; 
