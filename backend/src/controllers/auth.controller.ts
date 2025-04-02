@@ -489,4 +489,63 @@ export const updateProfile = async (
       error: error.message,
     });
   }
+};
+
+/**
+ * 직접 계정 생성 (디버깅 및 개발용, 실제 프로덕션에서는 사용하지 않음)
+ */
+export const createDirectUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (process.env.NODE_ENV !== 'development') {
+      res.status(403).json({
+        success: false,
+        message: '개발 환경에서만 사용 가능한 기능입니다.',
+      });
+      return;
+    }
+    
+    const { email, password, name, role } = req.body;
+    
+    // 필수 입력값 검증
+    if (!email || !password || !name) {
+      res.status(400).json({
+        success: false,
+        message: '이메일, 비밀번호, 이름을 모두 입력해주세요.',
+      });
+      return;
+    }
+    
+    // 직접 계정 생성
+    await authService.createDirectUser({
+      email,
+      password,
+      name,
+      role: role || 'user',
+    });
+    
+    res.status(201).json({
+      success: true,
+      message: '계정이 직접 생성되었습니다.',
+    });
+  } catch (error: any) {
+    logger.error('직접 계정 생성 컨트롤러 오류:', error);
+    
+    // 이메일 중복 오류는 409로 응답
+    if (error.message.includes('이미 사용 중인 이메일')) {
+      res.status(409).json({
+        success: false,
+        message: error.message,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: '계정 생성 처리 중 오류가 발생했습니다.',
+        error: error.message,
+      });
+    }
+  }
 }; 
