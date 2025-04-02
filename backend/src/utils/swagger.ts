@@ -93,8 +93,8 @@ export const setupSwagger = (app: Application): void => {
       customCss: '.swagger-ui .topbar { display: none }',
     };
 
-    // Swagger 경로 설정
-    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs, options));
+    // Swagger UI 미들웨어 설정
+    app.use('/api-docs', swaggerUi.serve as any, swaggerUi.setup(swaggerDocs, options) as any);
     
     console.log('✅ Swagger 문서가 설정되었습니다. /api-docs에서 확인할 수 있습니다.');
   } catch (error) {
