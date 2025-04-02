@@ -148,7 +148,7 @@ class AuthService {
    */
   public async createInitialAdmin(): Promise<void> {
     try {
-      const { email, password, name } = authConfig.admin;
+      const { email, password, name, useRawPassword } = authConfig.admin;
       
       // 관리자 계정이 이미 존재하는지 확인
       const existingAdmin = await User.findOne({
@@ -160,11 +160,18 @@ class AuthService {
         return;
       }
       
-      // 관리자 계정 생성
+      // 로그로 초기 관리자 계정 정보 확인
+      logger.info(`Creating admin account with email: ${email}, password: ${password}, name: ${name}`);
+      
+      // 관리자 계정 생성 (비밀번호 해시 여부 옵션 적용)
+      const hashedPassword = useRawPassword 
+        ? password
+        : await bcrypt.hash(password, authConfig.password.saltRounds);
+        
       await User.create({
         email,
         name,
-        password: await bcrypt.hash(password, authConfig.password.saltRounds),
+        password: hashedPassword,
         role: 'admin',
         isActive: true,
       });
@@ -231,6 +238,30 @@ class AuthService {
       return true;
     } catch (error) {
       logger.error('비밀번호 변경 오류:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * 직접 계정 생성 (디버깅 및 개발용)
+   */
+  public async createDirectUser(userData: { email: string; password: string; name: string; role?: string }): Promise<void> {
+    try {
+      const { email, password, name, role } = userData;
+      
+      // 사용자 생성
+      await User.create({
+        email,
+        password,
+        name,
+        role: role || 'user',
+        isActive: true,
+        emailVerified: true,
+      });
+      
+      logger.info(`사용자 계정이 직접 생성되었습니다: ${email}`);
+    } catch (error) {
+      logger.error('사용자 계정 직접 생성 오류:', error);
       throw error;
     }
   }
