@@ -20,6 +20,7 @@ const auth = {
     email: process.env.ADMIN_EMAIL || 'admin@mindroute.com',
     password: process.env.ADMIN_PASSWORD || 'changeme123',
     name: process.env.ADMIN_NAME || 'Admin',
+    useRawPassword: true, // 해시 없이 직접 비밀번호 사용 (개발 환경에서만 사용)
   },
 };
 
