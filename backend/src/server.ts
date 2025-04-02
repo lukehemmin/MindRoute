@@ -4,7 +4,8 @@ import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
-import { testConnection } from './config/database';
+import { testConnection, syncTables } from './config/database';
+import initDatabase from './config/dbInit';
 import authRoutes from './routes/auth.routes';
 // import userRoutes from './routes/user.routes';
 // import taskRoutes from './routes/task.routes';
@@ -15,9 +16,6 @@ import providerManager from './utils/providerManager';
 
 const app: Express = express();
 const port = process.env.PORT || 5000;
-
-// 데이터베이스 연결 테스트
-testConnection();
 
 // 미들웨어
 app.use(cors({
@@ -73,6 +71,28 @@ app.use('/api/ai', aiRoutes);
 // 서버 시작
 app.listen(port, async () => {
   logger.info(`Server running on port ${port}`);
+  
+  // 데이터베이스 초기화 (두 가지 방법 중 하나 선택)
+  const useSimpleSync = false; // 환경 변수로 제어 가능
+  
+  try {
+    // 1. 간단한 동기화 방법 (테이블 자동 생성 및 업데이트, 데이터 손실 위험 있음)
+    if (useSimpleSync) {
+      await testConnection();
+      // force: false - 테이블 삭제하지 않음
+      // alter: true - 모델 변경사항 적용
+      await syncTables(false, true);
+    } 
+    // 2. 안전한 마이그레이션 방법 (기존 데이터 보존, 세밀한 제어 가능)
+    else {
+      await initDatabase();
+    }
+    logger.info('Database initialization completed');
+  } catch (error) {
+    logger.error('Database initialization failed:', error);
+    // 심각한 오류이므로 프로세스 종료도 고려할 수 있음
+    // process.exit(1);
+  }
   
   // 제공업체 초기화
   try {
