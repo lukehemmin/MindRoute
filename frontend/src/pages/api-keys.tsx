@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/layout/Layout';
-import { useAuthStore } from '../store/auth';
+import useAuthStore from '../utils/authStore';
 import { FiPlus, FiTrash2, FiCopy, FiInfo } from 'react-icons/fi';
 import { ApiKey, getApiKeys, createApiKey, deleteApiKey } from '../services/user';
 
 const ApiKeys: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, loading } = useAuthStore();
   const router = useRouter();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [isLoadingKeys, setIsLoadingKeys] = useState<boolean>(true);
@@ -18,12 +18,12 @@ const ApiKeys: React.FC = () => {
 
   // 인증된 사용자만 페이지 접근 가능
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!loading && !isAuthenticated) {
       router.push('/login');
     } else if (isAuthenticated) {
       fetchApiKeys();
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, loading, router]);
 
   // API 키 목록 가져오기
   const fetchApiKeys = async () => {
