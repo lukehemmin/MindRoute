@@ -1,28 +1,41 @@
 import { api } from '../utils/api';
 import { User } from '../utils/authStore';
+import useAuthStore from '../utils/authStore';
 
 export interface AuthResponse {
   success: boolean;
   message?: string;
   data?: {
-    user: User;
-    accessToken: string;
-    refreshToken: string;
+    user?: any;
+    accessToken?: string;
+    refreshToken?: string;
+    expiresIn?: string;
   };
 }
 
 // 로그인
-export const login = async (email: string, password: string): Promise<AuthResponse> => {
+export const login = async (email: string, password: string): Promise<AuthResponse & { status?: number }> => {
   try {
     const response = await api.post('/api/auth/login', { email, password });
+    
+    // 응답에서 사용자 정보와 토큰 추출
+    const { accessToken, refreshToken, user } = response.data.data;
+    
+    // Zustand 스토어에 사용자 정보와 토큰 저장
+    if (user && accessToken && refreshToken) {
+      useAuthStore.getState().setAuth(user, accessToken, refreshToken);
+    }
+    
     return {
       success: true,
-      data: response.data
+      data: response.data.data
     };
   } catch (error: any) {
+    console.error('로그인 오류:', error);
     return {
       success: false,
       message: error.response?.data?.message || '로그인에 실패했습니다.',
+      status: error.response?.status
     };
   }
 };
@@ -31,9 +44,19 @@ export const login = async (email: string, password: string): Promise<AuthRespon
 export const register = async (name: string, email: string, password: string): Promise<AuthResponse> => {
   try {
     const response = await api.post('/api/auth/register', { name, email, password });
+    
+    // 응답에서 사용자 정보와 토큰 추출
+    const responseData = response.data.data || {};
+    const { accessToken, refreshToken, user } = responseData;
+    
+    // Zustand 스토어에 사용자 정보와 토큰 저장
+    if (user && accessToken && refreshToken) {
+      useAuthStore.getState().setAuth(user, accessToken, refreshToken);
+    }
+    
     return {
       success: true,
-      data: response.data
+      data: responseData
     };
   } catch (error: any) {
     return {
