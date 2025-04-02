@@ -25,6 +25,10 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, isSidebarOpen }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
+  // 명시적으로 사용자 권한 확인
+  const userIsAdmin = user?.role === 'admin';
+  console.log('Navbar - 사용자 권한:', user?.role);
+
   const handleLogout = async () => {
     try {
       // API 로그아웃 요청
@@ -77,7 +81,7 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, isSidebarOpen }) => {
     },
   ];
 
-  const adminNavItems = isAdmin() ? [
+  const adminNavItems = userIsAdmin ? [
     {
       name: '사용자 관리',
       icon: <FiUsers className="mr-2 h-5 w-5" />,
@@ -117,7 +121,7 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, isSidebarOpen }) => {
   ] : [];
 
   return (
-    <nav className="bg-white shadow-sm fixed top-0 left-0 right-0 z-10">
+    <nav className="bg-white shadow-sm fixed top-0 left-0 right-0 z-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
@@ -147,13 +151,13 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, isSidebarOpen }) => {
                       item.current
                         ? 'border-primary-500 text-gray-900'
                         : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                    } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+                    } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap`}
                   >
                     {item.name}
                   </Link>
                 ))}
 
-                {isAdmin() && (
+                {userIsAdmin && (
                   <div className="relative group">
                     <button
                       className={`${
@@ -226,45 +230,45 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, isSidebarOpen }) => {
                       </div>
                       
                       <div className="py-1">
-                        <a 
+                        <Link 
                           href="/profile"
                           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
                           <FiUser className="mr-3 h-4 w-4" />
                           내 프로필
-                        </a>
-                        <a 
+                        </Link>
+                        <Link 
                           href="/api-keys"
                           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
                           <FiKey className="mr-3 h-4 w-4" />
                           API 관리
-                        </a>
-                        <a 
+                        </Link>
+                        <Link 
                           href="/usage-logs"
                           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
                           <FiClock className="mr-3 h-4 w-4" />
                           이용 기록
-                        </a>
-                        <a 
+                        </Link>
+                        <Link 
                           href="/account"
                           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
                           <FiSettings className="mr-3 h-4 w-4" />
                           계정 설정
-                        </a>
+                        </Link>
                       </div>
                       
                       {user?.role === 'admin' && (
                         <div className="py-1 border-t border-gray-200">
-                          <a 
+                          <Link 
                             href="/admin"
                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           >
                             <FiShield className="mr-3 h-4 w-4" />
                             관리자 설정
-                          </a>
+                          </Link>
                         </div>
                       )}
                       
@@ -321,7 +325,7 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, isSidebarOpen }) => {
               </Link>
             ))}
 
-            {isAdmin() && (
+            {userIsAdmin && (
               <>
                 <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   관리자
