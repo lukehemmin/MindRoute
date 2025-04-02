@@ -35,3 +35,5 @@ coverage/
 .tmp/
 .temp/
 
+# 설정 파일
+backend/config/config.json
