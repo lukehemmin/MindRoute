@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { FiMenu, FiX, FiUser, FiLogOut, FiSettings, FiKey, FiShield, FiClock } from 'react-icons/fi';
 import useAuthStore from '../../utils/authStore';
 import { logout as logoutAPI } from '../../services/auth';
 import { 
@@ -9,15 +10,7 @@ import {
   FiUsers, 
   FiServer, 
   FiActivity, 
-  FiMessageSquare,
-  FiSettings,
-  FiUser,
-  FiMenu,
-  FiX,
-  FiShield,
-  FiKey,
-  FiClock,
-  FiLogOut
+  FiMessageSquare
 } from 'react-icons/fi';
 
 interface NavbarProps {
