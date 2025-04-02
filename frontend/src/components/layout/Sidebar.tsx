@@ -1,138 +1,137 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import useAuthStore from '../../utils/authStore';
 import { 
   FiHome, 
+  FiKey, 
+  FiClock, 
+  FiSettings, 
+  FiUser, 
   FiPlay, 
-  FiUsers, 
-  FiServer, 
-  FiActivity, 
-  FiMessageSquare,
-  FiSettings,
-  FiUser
+  FiShield,
+  FiBarChart2
 } from 'react-icons/fi';
+import { useAuthStore } from '../../store/auth';
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  isOpen: boolean;
+  toggleSidebar: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const router = useRouter();
-  const authStore = useAuthStore();
-  const isAdminUser = authStore.isAdmin();
+  const { user } = useAuthStore();
   
-  // 현재 경로가 메뉴 항목과 일치하는지 확인
-  const isActive = (path: string) => {
-    return router.pathname === path || router.pathname.startsWith(`${path}/`);
-  };
-  
-  // 모든 사용자를 위한 기본 메뉴 항목
+  const isAdmin = user?.role === 'admin';
+
   const menuItems = [
     {
       name: '대시보드',
-      icon: <FiHome className="mr-3 h-5 w-5" />,
-      href: '/dashboard',
-      current: isActive('/dashboard'),
+      href: '/',
+      icon: <FiHome className="mr-3 h-5 w-5" />
     },
     {
-      name: '플레이그라운드',
-      icon: <FiPlay className="mr-3 h-5 w-5" />,
+      name: 'AI 플레이그라운드',
       href: '/playground',
-      current: isActive('/playground'),
+      icon: <FiPlay className="mr-3 h-5 w-5" />
     },
+    {
+      name: 'API 키 관리',
+      href: '/api-keys',
+      icon: <FiKey className="mr-3 h-5 w-5" />
+    },
+    {
+      name: '이용 기록',
+      href: '/usage-logs',
+      icon: <FiClock className="mr-3 h-5 w-5" />
+    },
+    {
+      name: '내 프로필',
+      href: '/profile',
+      icon: <FiUser className="mr-3 h-5 w-5" />
+    },
+    {
+      name: '계정 설정',
+      href: '/account',
+      icon: <FiSettings className="mr-3 h-5 w-5" />
+    }
   ];
-  
-  // 관리자만을 위한 메뉴 항목
-  const adminMenuItems = isAdminUser
-    ? [
-        {
-          name: '사용자 관리',
-          icon: <FiUsers className="mr-3 h-5 w-5" />,
-          href: '/admin/users',
-          current: isActive('/admin/users'),
-        },
-        {
-          name: '제공업체 관리',
-          icon: <FiServer className="mr-3 h-5 w-5" />,
-          href: '/admin/providers',
-          current: isActive('/admin/providers'),
-        },
-        {
-          name: '로그 관리',
-          icon: <FiActivity className="mr-3 h-5 w-5" />,
-          href: '/admin/logs',
-          current: isActive('/admin/logs'),
-        },
-        {
-          name: '문의 관리',
-          icon: <FiMessageSquare className="mr-3 h-5 w-5" />,
-          href: '/admin/tickets',
-          current: isActive('/admin/tickets'),
-        },
-        {
-          name: '시스템 설정',
-          icon: <FiSettings className="mr-3 h-5 w-5" />,
-          href: '/admin/settings',
-          current: isActive('/admin/settings'),
-        },
-        {
-          name: '프로필 설정',
-          icon: <FiUser className="mr-3 h-5 w-5" />,
-          href: '/admin/profile',
-          current: isActive('/admin/profile'),
-        },
-      ]
-    : [];
+
+  const adminMenuItems = [
+    {
+      name: '관리자 대시보드',
+      href: '/admin',
+      icon: <FiBarChart2 className="mr-3 h-5 w-5" />
+    },
+    {
+      name: '관리자 설정',
+      href: '/admin/settings',
+      icon: <FiShield className="mr-3 h-5 w-5" />
+    }
+  ];
+
+  const isActive = (path: string) => {
+    if (path === '/') {
+      return router.pathname === path;
+    }
+    return router.pathname.startsWith(path);
+  };
 
   return (
-    <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
-      <div className="flex-1 flex flex-col min-h-0 bg-gray-800">
-        <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-          <div className="flex items-center flex-shrink-0 px-4">
-            <span className="text-white text-xl font-bold">MindRoute</span>
+    <div className={`bg-white fixed inset-y-0 left-0 z-30 w-64 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:inset-auto md:h-full shadow-md`}>
+      <div className="flex items-center justify-center h-16 border-b border-gray-200">
+        <span className="text-xl font-bold text-primary-600">MindRoute</span>
+      </div>
+      
+      <div className="overflow-y-auto h-full pb-20">
+        <nav className="mt-5 px-2 space-y-1">
+          {menuItems.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={`
+                ${isActive(item.href) ? 'bg-primary-50 text-primary-600' : 'text-gray-600 hover:bg-gray-50'}
+                group flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors
+              `}
+              onClick={() => {
+                if (isOpen) toggleSidebar();
+              }}
+            >
+              {React.cloneElement(item.icon, {
+                className: `${isActive(item.href) ? 'text-primary-600' : 'text-gray-400 group-hover:text-gray-500'} mr-3 h-5 w-5`,
+              })}
+              {item.name}
+            </Link>
+          ))}
+        </nav>
+        
+        {isAdmin && (
+          <div className="mt-8">
+            <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              관리자 메뉴
+            </h3>
+            <nav className="mt-2 px-2 space-y-1">
+              {adminMenuItems.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`
+                    ${isActive(item.href) ? 'bg-primary-50 text-primary-600' : 'text-gray-600 hover:bg-gray-50'}
+                    group flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors
+                  `}
+                  onClick={() => {
+                    if (isOpen) toggleSidebar();
+                  }}
+                >
+                  {React.cloneElement(item.icon, {
+                    className: `${isActive(item.href) ? 'text-primary-600' : 'text-gray-400 group-hover:text-gray-500'} mr-3 h-5 w-5`,
+                  })}
+                  {item.name}
+                </Link>
+              ))}
+            </nav>
           </div>
-          <nav className="mt-5 flex-1 px-2 space-y-1">
-            {menuItems.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`
-                  group flex items-center px-2 py-2 text-sm font-medium rounded-md
-                  ${
-                    item.current
-                      ? 'bg-gray-900 text-white'
-                      : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                  }
-                `}
-              >
-                {item.icon}
-                {item.name}
-              </Link>
-            ))}
-            
-            {adminMenuItems.length > 0 && (
-              <div className="pt-6">
-                <div className="mb-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  관리자
-                </div>
-                {adminMenuItems.map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`
-                      group flex items-center px-2 py-2 text-sm font-medium rounded-md
-                      ${
-                        item.current
-                          ? 'bg-gray-900 text-white'
-                          : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                      }
-                    `}
-                  >
-                    {item.icon}
-                    {item.name}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </nav>
-        </div>
+        )}
       </div>
     </div>
   );
