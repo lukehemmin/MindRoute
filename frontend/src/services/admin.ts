@@ -19,6 +19,12 @@ export interface PaginationResponse<T> {
   totalPages: number;
   currentPage: number;
   itemsPerPage: number;
+  pagination?: {
+    totalPages: number;
+    currentPage: number;
+    itemsPerPage: number;
+    totalItems: number;
+  };
 }
 
 // 로그 인터페이스
@@ -45,6 +51,7 @@ export interface Log {
   completionTokens: number;
   totalTokens: number;
   processingTime: number;
+  executionTime: number | null;
   ipAddress: string;
   userAgent: string;
   createdAt: string;
@@ -79,11 +86,28 @@ export interface ProviderInput {
 }
 
 // 사용자 목록 조회
-export const getAllUsers = async (page = 1, limit = 10, search?: string) => {
-  const response = await api.get<PaginationResponse<User>>('/admin/users', {
-    params: { page, limit, search },
-  });
-  return response.data;
+export const getAllUsers = async (page = 1, limit = 10, search?: string): Promise<{success: boolean, data: PaginationResponse<User>, message?: string}> => {
+  try {
+    const response = await api.get<PaginationResponse<User>>('/admin/users', {
+      params: { page, limit, search },
+    });
+    return {
+      success: true,
+      data: response.data
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.response?.data?.message || '사용자 목록을 가져오는데 실패했습니다.',
+      data: {
+        items: [],
+        totalItems: 0,
+        totalPages: 0,
+        currentPage: page,
+        itemsPerPage: limit
+      }
+    };
+  }
 };
 
 // 특정 사용자 조회
@@ -99,9 +123,20 @@ export const updateUser = async (userId: string, data: Partial<User>) => {
 };
 
 // 제공업체 목록 조회
-export const getAllProviders = async () => {
-  const response = await api.get<{ success: boolean, data: Provider[] }>('/admin/providers');
-  return response.data;
+export const getAllProviders = async (): Promise<{success: boolean, data: Provider[], message?: string}> => {
+  try {
+    const response = await api.get<{ data: Provider[] }>('/admin/providers');
+    return {
+      success: true,
+      data: response.data.data
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.response?.data?.message || '제공업체 목록을 가져오는데 실패했습니다.',
+      data: []
+    };
+  }
 };
 
 // 제공업체 추가
@@ -123,11 +158,28 @@ export const deleteProvider = async (providerId: string) => {
 };
 
 // 로그 목록 조회
-export const getLogs = async (page = 1, limit = 10, filters?: { userId?: string, providerId?: string, status?: string, startDate?: string, endDate?: string }) => {
-  const response = await api.get<PaginationResponse<Log>>('/admin/logs', {
-    params: { page, limit, ...filters },
-  });
-  return response.data;
+export const getLogs = async (page = 1, limit = 10, filters?: { userId?: string, providerId?: string, status?: string, startDate?: string, endDate?: string }): Promise<{success: boolean, data: PaginationResponse<Log>, message?: string}> => {
+  try {
+    const response = await api.get<PaginationResponse<Log>>('/admin/logs', {
+      params: { page, limit, ...filters },
+    });
+    return {
+      success: true,
+      data: response.data
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.response?.data?.message || '로그 목록을 가져오는데 실패했습니다.',
+      data: {
+        items: [],
+        totalItems: 0,
+        totalPages: 0,
+        currentPage: page,
+        itemsPerPage: limit
+      }
+    };
+  }
 };
 
 // 특정 로그 상세 조회
