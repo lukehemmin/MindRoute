@@ -136,6 +136,47 @@ export const getProfile = async () => {
   return response.data;
 };
 
+// 프로필 업데이트
+export interface ProfileUpdateParams {
+  name: string;
+}
+
+export const updateProfile = async (params: ProfileUpdateParams): Promise<{ success: boolean; message?: string; data?: User }> => {
+  try {
+    const response = await api.put('/users/profile', params);
+    return {
+      success: true,
+      data: response.data.user
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.response?.data?.message || '프로필 업데이트에 실패했습니다.',
+    };
+  }
+};
+
+// 비밀번호 업데이트
+export interface PasswordUpdateParams {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export const updatePassword = async (params: PasswordUpdateParams): Promise<{ success: boolean; message: string }> => {
+  try {
+    await api.post('/users/change-password', params);
+    return {
+      success: true,
+      message: '비밀번호가 성공적으로 변경되었습니다.',
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.response?.data?.message || '비밀번호 변경에 실패했습니다.',
+    };
+  }
+};
+
 // 토큰 저장 (로컬 스토리지)
 export const saveTokens = (accessToken: string, refreshToken: string) => {
   if (typeof window !== 'undefined') {
