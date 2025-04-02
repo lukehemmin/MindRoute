@@ -11,7 +11,7 @@ export enum TicketStatus {
 // 티켓 속성 인터페이스
 export interface TicketAttributes {
   id: string;
-  userId: string;
+  userId: number;
   subject: string;
   message: string;
   adminResponse?: string;
@@ -26,7 +26,7 @@ export interface TicketCreationAttributes extends Optional<TicketAttributes, 'id
 // 티켓 모델 클래스
 class Ticket extends Model<TicketAttributes, TicketCreationAttributes> implements TicketAttributes {
   public id!: string;
-  public userId!: string;
+  public userId!: number;
   public subject!: string;
   public message!: string;
   public adminResponse!: string | undefined;
@@ -44,7 +44,7 @@ Ticket.init(
       primaryKey: true,
     },
     userId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'users',
