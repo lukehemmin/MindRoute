@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import useAuthStore from '../utils/authStore';
 import { login } from '../services/auth';
+import axios from 'axios';
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
@@ -51,29 +52,39 @@ const LoginPage: React.FC = () => {
     return isValid;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm()) return;
-    
-    setIsLoading(true);
-    setLoginError('');
-
     try {
-      const response = await login(formData.email, formData.password);
-      
-      if (response.success && response.data) {
-        // 로그인 성공
-        const { user, accessToken, refreshToken } = response.data;
-        setAuth(user, accessToken, refreshToken);
-        router.push('/dashboard');
+      setIsLoading(true);
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/auth/login`, {
+        email: formData.email,
+        password: formData.password
+      });
+
+      if (response.data.success) {
+        const { user, accessToken, refreshToken } = response.data.data;
+        
+        console.log('로그인 성공:', { 
+          userId: user.id, 
+          role: user.role, 
+          tokenLength: accessToken.length
+        });
+        
+        // 인증 정보 저장
+        useAuthStore.getState().setAuth(user, accessToken, refreshToken);
+        
+        // 리다이렉트
+        if (user.role === 'admin') {
+          router.push('/admin');
+        } else {
+          router.push('/dashboard');
+        }
       } else {
-        // 로그인 실패
-        setLoginError(response.message || '로그인에 실패했습니다');
+        setLoginError(response.data.message || '로그인에 실패했습니다.');
       }
-    } catch (error) {
-      console.error('로그인 에러:', error);
-      setLoginError('로그인 중 오류가 발생했습니다. 나중에 다시 시도해주세요.');
+    } catch (err: any) {
+      console.error('로그인 오류:', err);
+      setLoginError(err.response?.data?.message || '로그인 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -98,7 +109,7 @@ const LoginPage: React.FC = () => {
           </div>
         )}
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="email" className="sr-only">
