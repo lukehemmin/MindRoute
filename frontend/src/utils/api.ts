@@ -2,7 +2,7 @@ import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import useAuthStore from './authStore';
 
 // API 기본 URL 설정
-const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
 // axios 인스턴스 생성
 export const api = axios.create({
@@ -74,12 +74,16 @@ api.interceptors.request.use(
       if (accessToken) {
         config.headers = config.headers || {};
         config.headers.Authorization = `Bearer ${accessToken}`;
+        console.log(`[utils/api] 요청에 토큰 추가: ${config.url}, 토큰 길이: ${accessToken.length}`);
+      } else {
+        console.warn(`[utils/api] 인증 토큰 없음: ${config.url}`);
       }
     }
     
     return config;
   },
   (error) => {
+    console.error('[utils/api] 요청 인터셉터 오류:', error);
     return Promise.reject(error);
   }
 );
@@ -106,18 +110,38 @@ api.interceptors.response.use(
       if (refreshToken) {
         try {
           // 토큰 갱신 요청
-          const response = await axios.post(`${baseURL}/api/auth/refresh-token`, {
+          const response = await axios.post(`${baseURL}/api/auth/refresh`, {
             refreshToken,
           });
           
-          const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+          const { accessToken } = response.data.data;
           
-          // 새 토큰 저장
-          useAuthStore.getState().setAuth(
-            useAuthStore.getState().user!, 
-            accessToken, 
-            newRefreshToken
-          );
+          // 새 토큰으로 사용자 정보 가져오기
+          const userResponse = await axios.get(`${baseURL}/api/auth/me`, {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          });
+          
+          // 사용자 정보가 성공적으로 로드되면 저장
+          if (userResponse.data.success) {
+            const userData = userResponse.data.data;
+            
+            // 새 토큰과 사용자 정보 저장
+            useAuthStore.getState().setAuth(
+              userData, 
+              accessToken, 
+              refreshToken
+            );
+          } else {
+            // 사용자 정보 불러오기 실패 시 토큰만 업데이트
+            const currentUser = useAuthStore.getState().user;
+            useAuthStore.getState().setAuth(
+              currentUser!, 
+              accessToken, 
+              refreshToken
+            );
+          }
           
           // 원래 요청 재시도
           if (originalRequest.headers) {
