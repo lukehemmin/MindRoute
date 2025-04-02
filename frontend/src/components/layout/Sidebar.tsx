@@ -9,7 +9,8 @@ import {
   FiUser, 
   FiPlay, 
   FiShield,
-  FiBarChart2
+  FiBarChart2,
+  FiServer
 } from 'react-icons/fi';
 import useAuthStore from '../../utils/authStore';
 
@@ -27,18 +28,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const menuItems = [
     {
       name: '대시보드',
-      href: '/',
+      href: '/dashboard',
       icon: <FiHome className="mr-3 h-5 w-5" />
+    },
+    {
+      name: 'API 관리',
+      href: '/api-keys',
+      icon: <FiKey className="mr-3 h-5 w-5" />
     },
     {
       name: 'AI 플레이그라운드',
       href: '/playground',
       icon: <FiPlay className="mr-3 h-5 w-5" />
-    },
-    {
-      name: 'API 키 관리',
-      href: '/api-keys',
-      icon: <FiKey className="mr-3 h-5 w-5" />
     },
     {
       name: '이용 기록',
@@ -64,14 +65,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
       icon: <FiBarChart2 className="mr-3 h-5 w-5" />
     },
     {
-      name: '관리자 설정',
+      name: '제공업체 관리',
+      href: '/admin/providers',
+      icon: <FiServer className="mr-3 h-5 w-5" />
+    },
+    {
+      name: '시스템 설정',
       href: '/admin/settings',
       icon: <FiShield className="mr-3 h-5 w-5" />
     }
   ];
 
   const isActive = (path: string) => {
-    if (path === '/') {
+    if (path === '/dashboard') {
       return router.pathname === path;
     }
     return router.pathname.startsWith(path);
@@ -108,7 +114,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         {isAdmin && (
           <div className="mt-8">
             <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              관리자 메뉴
+              관리자 설정
             </h3>
             <nav className="mt-2 px-2 space-y-1">
               {adminMenuItems.map((item) => (
