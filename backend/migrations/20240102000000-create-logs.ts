@@ -1,6 +1,6 @@
 import { QueryInterface, DataTypes } from 'sequelize';
 
-module.exports = {
+export default {
   up: async (queryInterface: QueryInterface) => {
     await queryInterface.createTable('logs', {
       id: {
