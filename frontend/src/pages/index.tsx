@@ -155,7 +155,7 @@ const Home: React.FC = () => {
                       다양한 AI 모델을 즉시 테스트하고 비교해보세요. 텍스트 생성, 이미지 처리, 코드 생성 등 다양한 작업을 수행할 수 있습니다.
                     </p>
                   </div>
-                </div>
+          </div>
 
                 <div className="flex">
                   <div className="flex-shrink-0">
@@ -180,7 +180,7 @@ const Home: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+          </div>
 
         {/* CTA 섹션 */}
         <div className="bg-primary-700">
