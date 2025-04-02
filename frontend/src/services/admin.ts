@@ -14,36 +14,40 @@ export interface User {
 
 // 페이지네이션 응답 타입
 export interface PaginationResponse<T> {
-  success: boolean;
-  data: {
-    items: T[];
-    pagination: {
-      totalItems: number;
-      totalPages: number;
-      currentPage: number;
-      itemsPerPage: number;
-    };
-  };
+  items: T[];
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  itemsPerPage: number;
 }
 
 // 로그 인터페이스
 export interface Log {
   id: string;
   userId: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
   providerId: string;
+  provider?: {
+    id: string;
+    name: string;
+  };
   requestType: string;
-  requestBody: any;
-  responseBody?: any;
+  requestData: any;
+  responseData: any;
   status: string;
-  executionTime?: number;
-  promptTokens?: number;
-  completionTokens?: number;
-  totalTokens?: number;
-  error?: string;
+  statusCode: number;
+  errorMessage?: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  processingTime: number;
+  ipAddress: string;
+  userAgent: string;
   createdAt: string;
-  updatedAt: string;
-  user?: User;
-  provider?: Provider;
 }
 
 // 티켓 인터페이스
@@ -130,4 +134,50 @@ export const getLogs = async (page = 1, limit = 10, filters?: { userId?: string,
 export const getLogById = async (logId: string) => {
   const response = await api.get<{ success: boolean, data: Log }>(`/admin/logs/${logId}`);
   return response.data;
-}; 
+};
+
+// 사용자 통계 데이터 조회
+export const getUserStats = async (): Promise<{success: boolean, data: UsageStats, message?: string}> => {
+  try {
+    const response = await api.get('/users/stats');
+    return {
+      success: true,
+      data: response.data.data
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.response?.data?.message || '사용자 통계 데이터를 가져오는데 실패했습니다.',
+      data: {
+        totalApiCalls: 0,
+        totalTokensUsed: 0,
+        activeProviders: 0,
+        lastUsedTime: '없음'
+      }
+    };
+  }
+};
+
+// 관리자 대시보드 통계 데이터 조회
+export const getAdminStats = async (): Promise<{success: boolean, data: any, message?: string}> => {
+  try {
+    const response = await api.get('/admin/stats');
+    return {
+      success: true,
+      data: response.data.data
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.response?.data?.message || '관리자 통계 데이터를 가져오는데 실패했습니다.',
+      data: {}
+    };
+  }
+};
+
+export interface UsageStats {
+  totalApiCalls: number;
+  totalTokensUsed: number;
+  activeProviders: number;
+  lastUsedTime: string;
+} 
