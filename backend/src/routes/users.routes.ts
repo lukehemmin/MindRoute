@@ -7,6 +7,7 @@ import {
   createApiKey, 
   deleteApiKey 
 } from '../controllers/users/apiKeys.controller';
+import { getProfile, updateProfile } from '../controllers/auth.controller';
 
 const router = Router();
 
@@ -23,5 +24,9 @@ router.get('/stats', getUserStats);
 router.get('/api-keys', getApiKeys);
 router.post('/api-keys', createApiKey);
 router.delete('/api-keys/:keyId', deleteApiKey);
+
+// 프로필 관리 라우트
+router.get('/profile', getProfile);
+router.put('/profile', updateProfile);
 
 export default router; 
