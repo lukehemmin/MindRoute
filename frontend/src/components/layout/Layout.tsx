@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
-import { useAuthStore } from '../../store/auth';
+import useAuthStore from '../../utils/authStore';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,27 +10,27 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const router = useRouter();
-  const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+  const { isAuthenticated, loading } = useAuthStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // 인증 상태 체크
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    // 인증 상태 확인 (선택적)
+  }, []);
 
   // 인증되지 않은 사용자 리다이렉트 처리
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && router.pathname !== '/login' && router.pathname !== '/register') {
+    if (!loading && !isAuthenticated && router.pathname !== '/login' && router.pathname !== '/register') {
       router.push('/login');
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, loading, router]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
   // 로그인 페이지에서는 레이아웃 없이 표시
-  if (router.pathname === '/login' || router.pathname === '/register' || isLoading) {
+  if (router.pathname === '/login' || router.pathname === '/register' || loading) {
     return <>{children}</>;
   }
 
