@@ -17,28 +17,94 @@ const ProvidersAdmin: React.FC = () => {
   const [isCreating, setIsCreating] = useState<boolean>(false);
 
   useEffect(() => {
+    // 인증 로딩 상태일 때는 아직 체크하지 않음
+    if (useAuthStore.getState().loading) {
+      console.log('인증 상태 로딩 중...');
+      return;
+    }
+    
     // 인증되지 않았거나 관리자가 아닌 경우 접근 거부
     if (!isAuthenticated) {
+      console.log('인증되지 않음, 로그인 페이지로 리다이렉트');
       router.push('/login');
       return;
     }
 
     if (!useAuthStore.getState().isAdmin()) {
+      console.log('관리자 권한 없음, 대시보드로 리다이렉트');
       router.push('/dashboard');
       return;
     }
 
+    // 인증 및 권한 확인 후 데이터 로드
     fetchProviders();
   }, [isAuthenticated, router]);
+
+  // 인증 상태 변경 감지
+  useEffect(() => {
+    // 컴포넌트 마운트 시 인증 상태 로딩 완료 확인
+    const checkAuth = () => {
+      const authState = useAuthStore.getState();
+      if (!authState.loading) {
+        if (!authState.isAuthenticated) {
+          console.log('인증 로딩 완료: 인증되지 않음');
+          router.push('/login');
+        } else if (!authState.isAdmin()) {
+          console.log('인증 로딩 완료: 관리자 아님');
+          router.push('/dashboard');
+        } else {
+          console.log('인증 로딩 완료: 관리자 권한 확인됨');
+          fetchProviders();
+        }
+      }
+    };
+
+    // 초기 한 번 체크
+    checkAuth();
+    
+    // 인증 상태 변경 감지를 위한 구독
+    const unsubscribe = useAuthStore.subscribe(
+      (state) => {
+        // 로딩 상태가 false로 변경될 때 인증 상태 체크
+        if (!state.loading) {
+          checkAuth();
+        }
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [router]);
 
   const fetchProviders = async () => {
     try {
       setLoading(true);
+      console.log("제공업체 목록 조회 시작");
+      
+      // 사용자 인증 상태 및 토큰 확인
+      const authState = useAuthStore.getState();
+      console.log("인증 상태:", { 
+        isAuthenticated: authState.isAuthenticated, 
+        hasToken: !!authState.accessToken,
+        isAdmin: authState.isAdmin(),
+        tokenLength: authState.accessToken ? authState.accessToken.length : 0
+      });
+      
+      if (!authState.accessToken) {
+        console.error("인증 토큰이 없습니다!");
+        setError('인증 토큰이 없습니다. 다시 로그인해주세요.');
+        return;
+      }
+      
       const response = await getAllProviders();
+      console.log("제공업체 응답 데이터:", response);
       
       if (response.success) {
+        console.log("성공적으로 제공업체 목록을 받았습니다:", response.data);
         setProviders(response.data);
       } else {
+        console.error("제공업체 목록 가져오기 실패:", response.message);
         setError('제공업체 목록을 가져오는데 실패했습니다.');
       }
     } catch (err) {
