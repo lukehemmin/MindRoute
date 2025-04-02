@@ -29,21 +29,25 @@ export const defaultRateLimit = rateLimit({
  * 로그인 및 회원가입과 같은 인증 관련 엔드포인트에 더 엄격한 제한 적용
  */
 export const authRateLimit = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1시간
-  max: 10, // IP당 1시간당 최대 10회 요청 허용
+  windowMs: 5 * 60 * 1000, // 5분 (1시간에서 5분으로 변경)
+  max: 100, // IP당 5분당 최대 30회 요청 허용 (10회에서 30회로 증가)
   standardHeaders: true,
   legacyHeaders: false,
   message: { 
     success: false, 
-    message: '인증 요청이 너무 많습니다. 1시간 후에 다시 시도해주세요.' 
+    message: '인증 요청이 너무 많습니다. 5분 후에 다시 시도해주세요.' 
   },
   handler: (req: Request, res: Response) => {
     logger.warn(`인증 속도 제한 초과: ${req.ip}`);
     res.status(429).json({ 
       success: false, 
-      message: '인증 요청이 너무 많습니다. 1시간 후에 다시 시도해주세요.' 
+      message: '인증 요청이 너무 많습니다. 5분 후에 다시 시도해주세요.' 
     });
   },
+  // 개발 환경에서는 속도 제한 기능 비활성화 옵션 추가
+  skip: (req: Request) => {
+    return process.env.NODE_ENV === 'development';
+  }
 });
 
 /**
