@@ -1,3 +1,7 @@
+import dotenv from 'dotenv';
+// .env 파일 로드 (서버 시작 전 가장 먼저 실행되어야 함)
+dotenv.config();
+
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
