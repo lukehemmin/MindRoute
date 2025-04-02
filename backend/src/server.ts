@@ -11,9 +11,9 @@ import cookieParser from 'cookie-parser';
 import { testConnection, syncTables } from './config/database';
 import initDatabase from './config/dbInit';
 import authRoutes from './routes/auth.routes';
-// import userRoutes from './routes/user.routes';
-// import taskRoutes from './routes/task.routes';
+import adminRoutes from './routes/admin.routes';
 import aiRoutes from './routes/ai.routes';
+import usersRoutes from './routes/users.routes';
 import logger from './utils/logger';
 import fileUpload from 'express-fileupload';
 import providerManager from './utils/providerManager';
@@ -68,9 +68,9 @@ app.get('/health', (req: Request, res: Response) => {
 
 // 라우트
 app.use('/api/auth', authRoutes);
-// app.use('/api/users', userRoutes);
-// app.use('/api/tasks', taskRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/users', usersRoutes);
 
 // 서버 시작
 app.listen(port, async () => {
