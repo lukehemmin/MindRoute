@@ -4,14 +4,7 @@ import { User } from '../models/user.model';
 import { ApiError } from './error.middleware';
 import logger from '../utils/logger';
 import config from '../config/app.config';
-
-interface JwtPayload {
-  id: number;
-  email: string;
-  role: string;
-  exp?: number; // Optional expiration time
-  iat?: number; // Optional issued at time
-}
+import { TokenType, TokenPayload } from '../utils/jwt';
 
 // 인증된 요청에 사용자 정보를 추가하기 위한 타입 확장
 declare global {
@@ -45,25 +38,34 @@ export const authenticate = async (
     }
 
     // 토큰 검증
-    const decoded = jwt.verify(token, config.jwtSecret) as JwtPayload;
+    const decoded = jwt.verify(token, config.jwtSecret) as TokenPayload;
     if (!decoded) {
       throw ApiError.unauthorized('유효하지 않은 토큰입니다.');
     }
 
-    // 사용자 조회
-    const user = await User.findByPk(decoded.id);
+    // 토큰 유형 확인
+    if (decoded.type !== TokenType.ACCESS) {
+      throw ApiError.unauthorized('유효하지 않은 토큰 유형입니다.');
+    }
+
+    // 사용자 조회 (userId 필드 사용)
+    const user = await User.findByPk(decoded.userId);
     if (!user) {
+      logger.error(`인증 실패: 사용자 ID ${decoded.userId}를 찾을 수 없습니다.`);
       throw ApiError.unauthorized('사용자를 찾을 수 없습니다.');
     }
 
     // 토큰 만료 여부 확인
     const currentTimestamp = Math.floor(Date.now() / 1000);
-    if (decoded.exp && decoded.exp < currentTimestamp) {
+    // TokenPayload 타입에는 exp 속성이 없지만 jwt.verify() 결과에는 추가됨
+    const jwtDecoded = decoded as TokenPayload & { exp?: number; iat?: number };
+    if (jwtDecoded.exp && jwtDecoded.exp < currentTimestamp) {
       throw ApiError.unauthorized('토큰이 만료되었습니다.');
     }
 
     // 요청 객체에 사용자 정보 추가
     req.user = user;
+    req.token = token;
 
     next();
   } catch (error) {
