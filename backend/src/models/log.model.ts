@@ -4,7 +4,7 @@ import sequelize from '../config/database';
 // 로그 속성 인터페이스
 export interface LogAttributes {
   id: string;
-  userId: string | null;
+  userId: number | null;
   providerId: string | null;
   requestType: string;
   requestBody: Record<string, any>;
@@ -22,7 +22,7 @@ export interface LogAttributes {
 // 로그 모델 클래스
 export class Log extends Model<LogAttributes> implements LogAttributes {
   public id!: string;
-  public userId!: string | null;
+  public userId!: number | null;
   public providerId!: string | null;
   public requestType!: string;
   public requestBody!: Record<string, any>;
@@ -46,7 +46,7 @@ Log.init(
       allowNull: false,
     },
     userId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: true,
       references: {
         model: 'users',
