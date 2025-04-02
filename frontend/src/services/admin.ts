@@ -88,7 +88,7 @@ export interface ProviderInput {
 // 사용자 목록 조회
 export const getAllUsers = async (page = 1, limit = 10, search?: string): Promise<{success: boolean, data: PaginationResponse<User>, message?: string}> => {
   try {
-    const response = await api.get<PaginationResponse<User>>('/admin/users', {
+    const response = await api.get<PaginationResponse<User>>('/api/admin/users', {
       params: { page, limit, search },
     });
     return {
@@ -112,25 +112,39 @@ export const getAllUsers = async (page = 1, limit = 10, search?: string): Promis
 
 // 특정 사용자 조회
 export const getUserById = async (userId: string) => {
-  const response = await api.get<{ success: boolean, data: User }>(`/admin/users/${userId}`);
+  const response = await api.get<{ success: boolean, data: User }>(`/api/admin/users/${userId}`);
   return response.data;
 };
 
 // 사용자 정보 수정
 export const updateUser = async (userId: string, data: Partial<User>) => {
-  const response = await api.put<{ success: boolean, message: string, data: User }>(`/admin/users/${userId}`, data);
+  const response = await api.put<{ success: boolean, message: string, data: User }>(`/api/admin/users/${userId}`, data);
   return response.data;
 };
 
 // 제공업체 목록 조회
 export const getAllProviders = async (): Promise<{success: boolean, data: Provider[], message?: string}> => {
   try {
-    const response = await api.get<{ data: Provider[] }>('/admin/providers');
-    return {
-      success: true,
-      data: response.data.data
-    };
+    console.log('제공업체 목록 조회 요청 시작');
+    const response = await api.get<{ success: boolean, data: Provider[], message?: string }>('/api/admin/providers');
+    console.log('제공업체 응답:', response.data);
+    
+    if (response.data.success) {
+      return {
+        success: true,
+        data: response.data.data
+      };
+    } else {
+      console.error('API 응답은 성공했지만 데이터 성공 플래그가 false:', response.data);
+      return {
+        success: false,
+        message: response.data.message || '제공업체 목록을 가져오는데 실패했습니다.',
+        data: []
+      };
+    }
   } catch (error: any) {
+    console.error('제공업체 목록 요청 오류:', error);
+    console.error('오류 상세:', error.response?.data || error.message);
     return {
       success: false,
       message: error.response?.data?.message || '제공업체 목록을 가져오는데 실패했습니다.',
@@ -141,26 +155,26 @@ export const getAllProviders = async (): Promise<{success: boolean, data: Provid
 
 // 제공업체 추가
 export const createProvider = async (data: ProviderInput) => {
-  const response = await api.post<{ success: boolean, message: string, data: Provider }>('/admin/providers', data);
+  const response = await api.post<{ success: boolean, message: string, data: Provider }>('/api/admin/providers', data);
   return response.data;
 };
 
 // 제공업체 수정
 export const updateProvider = async (providerId: string, data: Partial<ProviderInput>) => {
-  const response = await api.put<{ success: boolean, message: string, data: Provider }>(`/admin/providers/${providerId}`, data);
+  const response = await api.put<{ success: boolean, message: string, data: Provider }>(`/api/admin/providers/${providerId}`, data);
   return response.data;
 };
 
 // 제공업체 삭제
 export const deleteProvider = async (providerId: string) => {
-  const response = await api.delete<{ success: boolean, message: string }>(`/admin/providers/${providerId}`);
+  const response = await api.delete<{ success: boolean, message: string }>(`/api/admin/providers/${providerId}`);
   return response.data;
 };
 
 // 로그 목록 조회
 export const getLogs = async (page = 1, limit = 10, filters?: { userId?: string, providerId?: string, status?: string, startDate?: string, endDate?: string }): Promise<{success: boolean, data: PaginationResponse<Log>, message?: string}> => {
   try {
-    const response = await api.get<PaginationResponse<Log>>('/admin/logs', {
+    const response = await api.get<PaginationResponse<Log>>('/api/admin/logs', {
       params: { page, limit, ...filters },
     });
     return {
@@ -184,14 +198,14 @@ export const getLogs = async (page = 1, limit = 10, filters?: { userId?: string,
 
 // 특정 로그 상세 조회
 export const getLogById = async (logId: string) => {
-  const response = await api.get<{ success: boolean, data: Log }>(`/admin/logs/${logId}`);
+  const response = await api.get<{ success: boolean, data: Log }>(`/api/admin/logs/${logId}`);
   return response.data;
 };
 
 // 사용자 통계 데이터 조회
 export const getUserStats = async (): Promise<{success: boolean, data: UsageStats, message?: string}> => {
   try {
-    const response = await api.get('/users/stats');
+    const response = await api.get('/api/users/stats');
     return {
       success: true,
       data: response.data.data
@@ -213,7 +227,7 @@ export const getUserStats = async (): Promise<{success: boolean, data: UsageStat
 // 관리자 대시보드 통계 데이터 조회
 export const getAdminStats = async (): Promise<{success: boolean, data: any, message?: string}> => {
   try {
-    const response = await api.get('/admin/stats');
+    const response = await api.get('/api/admin/stats');
     return {
       success: true,
       data: response.data.data
