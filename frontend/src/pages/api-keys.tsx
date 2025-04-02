@@ -1,123 +1,140 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/layout/Layout';
+import { getApiKeys, createApiKey, deleteApiKey, ApiKey } from '../services/user';
 import useAuthStore from '../utils/authStore';
-import { FiPlus, FiTrash2, FiCopy, FiInfo } from 'react-icons/fi';
-import { ApiKey, getApiKeys, createApiKey, deleteApiKey } from '../services/user';
+import { FiPlus, FiTrash, FiCopy, FiEye, FiEyeOff, FiRefreshCw } from 'react-icons/fi';
 
-const ApiKeys: React.FC = () => {
-  const { isAuthenticated, loading } = useAuthStore();
+export default function ApiKeysPage() {
   const router = useRouter();
+  const { isAuthenticated, loading, user } = useAuthStore();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
-  const [isLoadingKeys, setIsLoadingKeys] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState<boolean>(false);
-  const [newKeyName, setNewKeyName] = useState<string>('');
-  const [newKey, setNewKey] = useState<ApiKey | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [newKeyName, setNewKeyName] = useState('');
+  const [showNewKey, setShowNewKey] = useState<string | null>(null);
+  const [keyVisibility, setKeyVisibility] = useState<{[key: string]: boolean}>({});
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
-  // 인증된 사용자만 페이지 접근 가능
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push('/login');
-    } else if (isAuthenticated) {
+    }
+  }, [loading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
       fetchApiKeys();
     }
-  }, [isAuthenticated, loading, router]);
+  }, [isAuthenticated]);
 
-  // API 키 목록 가져오기
   const fetchApiKeys = async () => {
-    setIsLoadingKeys(true);
-    setError(null);
-
+    setIsLoading(true);
+    setError('');
     try {
       const response = await getApiKeys();
-      
       if (response.success) {
         setApiKeys(response.data);
       } else {
-        setError(response.message || 'API 키 목록을 가져오는데 실패했습니다.');
+        if (response.status === 401) {
+          setShowLoginPrompt(true);
+          setError('인증이 필요합니다. 다시 로그인해 주세요.');
+        } else {
+          setError(response.message || 'API 키를 불러오는데 실패했습니다.');
+        }
       }
     } catch (err) {
-      setError('API 키 목록을 가져오는 중 오류가 발생했습니다.');
+      setError('API 키를 불러오는데 실패했습니다.');
     } finally {
-      setIsLoadingKeys(false);
+      setIsLoading(false);
     }
   };
 
-  // API 키 생성
   const handleCreateKey = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!newKeyName.trim()) {
       setError('API 키 이름을 입력해주세요.');
       return;
     }
-    
-    setIsLoadingKeys(true);
-    setError(null);
-    setSuccess(null);
-    
+
+    setIsLoading(true);
+    setError('');
     try {
       const response = await createApiKey(newKeyName);
-      
       if (response.success) {
-        setNewKey(response.data);
         setApiKeys([response.data, ...apiKeys]);
-        setSuccess('API 키가 성공적으로 생성되었습니다.');
         setNewKeyName('');
-        setShowCreateForm(false);
+        setShowNewKey(response.data.key);
       } else {
-        setError(response.message || 'API 키 생성에 실패했습니다.');
+        if (response.status === 401) {
+          setShowLoginPrompt(true);
+          setError('인증이 필요합니다. 다시 로그인해 주세요.');
+        } else {
+          setError(response.message || 'API 키 생성에 실패했습니다.');
+        }
       }
     } catch (err) {
-      setError('API 키 생성 중 오류가 발생했습니다.');
+      setError('API 키 생성에 실패했습니다.');
     } finally {
-      setIsLoadingKeys(false);
+      setIsLoading(false);
     }
   };
 
-  // API 키 삭제
   const handleDeleteKey = async (keyId: string) => {
-    if (!window.confirm('이 API 키를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+    if (!confirm('이 API 키를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
       return;
     }
-    
-    setIsLoadingKeys(true);
-    setError(null);
-    setSuccess(null);
-    
+
+    setIsLoading(true);
+    setError('');
     try {
       const response = await deleteApiKey(keyId);
-      
       if (response.success) {
         setApiKeys(apiKeys.filter(key => key.id !== keyId));
-        setSuccess('API 키가 성공적으로 삭제되었습니다.');
       } else {
-        setError(response.message || 'API 키 삭제에 실패했습니다.');
+        if (response.status === 401) {
+          setShowLoginPrompt(true);
+          setError('인증이 필요합니다. 다시 로그인해 주세요.');
+        } else {
+          setError(response.message || 'API 키 삭제에 실패했습니다.');
+        }
       }
     } catch (err) {
-      setError('API 키 삭제 중 오류가 발생했습니다.');
+      setError('API 키 삭제에 실패했습니다.');
     } finally {
-      setIsLoadingKeys(false);
+      setIsLoading(false);
     }
   };
 
-  // 클립보드에 복사
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(
-      () => {
-        setSuccess('API 키가 클립보드에 복사되었습니다.');
-        setTimeout(() => setSuccess(null), 3000);
-      },
-      () => {
-        setError('API 키 복사에 실패했습니다.');
-      }
-    );
+  const handleRetry = () => {
+    fetchApiKeys();
   };
 
-  // 날짜 포맷팅
-  const formatDate = (dateString: string) => {
+  const handleLogin = () => {
+    useAuthStore.getState().logout();
+    router.push('/login');
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        alert('API 키가 클립보드에 복사되었습니다.');
+      })
+      .catch(() => {
+        alert('클립보드 복사에 실패했습니다.');
+      });
+  };
+
+  const toggleKeyVisibility = (keyId: string) => {
+    setKeyVisibility({
+      ...keyVisibility,
+      [keyId]: !keyVisibility[keyId]
+    });
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '없음';
+    
     const date = new Date(dateString);
     return date.toLocaleDateString('ko-KR', {
       year: 'numeric',
@@ -128,184 +145,190 @@ const ApiKeys: React.FC = () => {
     });
   };
 
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-full">
+          <p className="text-lg">로딩 중...</p>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">API 키 관리</h1>
-          <button
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className="bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded transition flex items-center"
-          >
-            <FiPlus className="mr-1" /> 새 API 키 생성
-          </button>
+          {user && (
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">{user.name}</span>님의 API 키
+            </div>
+          )}
         </div>
-
+        
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-            {success}
-          </div>
-        )}
-
-        {showCreateForm && (
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 className="text-lg font-medium mb-4">새 API 키 생성</h2>
-            <form onSubmit={handleCreateKey}>
-              <div className="mb-4">
-                <label htmlFor="keyName" className="block text-sm font-medium text-gray-700 mb-2">
-                  API 키 이름
-                </label>
-                <input
-                  type="text"
-                  id="keyName"
-                  name="keyName"
-                  value={newKeyName}
-                  onChange={(e) => setNewKeyName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="프로젝트 이름 또는 용도를 입력하세요"
-                />
-              </div>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateForm(false)}
-                  className="mr-2 bg-white text-gray-700 border border-gray-300 py-2 px-4 rounded hover:bg-gray-50 transition"
-                >
-                  취소
-                </button>
-                <button
-                  type="submit"
-                  className="bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded transition"
-                  disabled={isLoadingKeys}
-                >
-                  {isLoadingKeys ? '처리 중...' : '생성하기'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {newKey && (
-          <div className="bg-yellow-50 border border-yellow-400 text-yellow-800 px-4 py-3 rounded mb-6">
-            <div className="flex items-start">
-              <FiInfo className="mt-1 mr-2" />
+            <div className="flex justify-between items-center">
               <div>
-                <h3 className="font-medium">중요: 이 키는 지금 한 번만 표시됩니다!</h3>
-                <p className="text-sm mt-1 mb-2">
-                  이 API 키를 저장하세요. 페이지를 떠나면 전체 키를 다시 볼 수 없습니다.
-                </p>
-                <div className="flex items-center bg-white rounded border p-2 mb-2">
-                  <code className="flex-1 text-sm font-mono truncate">{newKey.key}</code>
-                  <button
-                    onClick={() => copyToClipboard(newKey.key)}
-                    className="ml-2 p-1 text-gray-500 hover:text-gray-700"
+                <p className="font-bold">오류 발생</p>
+                <p className="text-sm">{error}</p>
+              </div>
+              <div className="flex">
+                {showLoginPrompt && (
+                  <button 
+                    onClick={handleLogin}
+                    className="mr-2 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
                   >
-                    <FiCopy />
+                    로그인
                   </button>
-                </div>
-                <button
-                  onClick={() => setNewKey(null)}
-                  className="text-sm text-yellow-800 underline"
+                )}
+                <button 
+                  onClick={handleRetry}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded flex items-center"
                 >
-                  확인, 저장했습니다
+                  <FiRefreshCw className="mr-1" /> 재시도
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          {isLoadingKeys && apiKeys.length === 0 ? (
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600 mx-auto"></div>
-              <p className="mt-4 text-gray-500">API 키 로딩 중...</p>
+        <div className="bg-white p-6 rounded-lg shadow mb-6">
+          <h2 className="text-xl font-semibold mb-4">새 API 키 생성</h2>
+          <form onSubmit={handleCreateKey} className="flex flex-col md:flex-row gap-4">
+            <input
+              type="text"
+              value={newKeyName}
+              onChange={(e) => setNewKeyName(e.target.value)}
+              placeholder="API 키 이름 (예: 프로덕션, 테스트 등)"
+              className="flex-1 border rounded-md px-4 py-2"
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              className="bg-blue-600 text-white px-6 py-2 rounded-md flex items-center justify-center"
+              disabled={isLoading}
+            >
+              <FiPlus className="mr-2" />
+              생성하기
+            </button>
+          </form>
+        </div>
+
+        {showNewKey && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="font-bold mb-1">새 API 키가 생성되었습니다</p>
+                <p className="mb-1">이 키는 다시 표시되지 않으니 안전한 곳에 저장해주세요.</p>
+                <p className="font-mono break-all bg-green-50 p-2 rounded">{showNewKey}</p>
+              </div>
+              <div>
+                <button
+                  onClick={() => copyToClipboard(showNewKey)}
+                  className="bg-green-600 text-white p-2 rounded"
+                >
+                  <FiCopy />
+                </button>
+              </div>
             </div>
-          ) : apiKeys.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="text-gray-500 mb-4">생성된 API 키가 없습니다.</p>
+            <div className="mt-2">
               <button
-                onClick={() => setShowCreateForm(true)}
-                className="bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded transition"
+                onClick={() => setShowNewKey(null)}
+                className="text-green-800 underline"
               >
-                API 키 생성하기
+                닫기
               </button>
             </div>
+          </div>
+        )}
+
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-xl font-semibold mb-4">API 키 목록</h2>
+          
+          {isLoading ? (
+            <p>로딩 중...</p>
+          ) : apiKeys.length === 0 ? (
+            <p>등록된 API 키가 없습니다.</p>
           ) : (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    이름
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    API 키
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    생성일
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    마지막 사용
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    만료일
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    관리
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {apiKeys.map((key) => (
-                  <tr key={key.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-medium text-gray-900">{key.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <span className="text-gray-500 font-mono text-sm">
-                          {key.key.substring(0, 10)}...
-                        </span>
-                        <button
-                          onClick={() => copyToClipboard(key.key)}
-                          className="ml-2 text-gray-400 hover:text-gray-600"
-                          title="API 키 복사"
-                        >
-                          <FiCopy size={14} />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(key.createdAt)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {key.lastUsedAt ? formatDate(key.lastUsedAt) : '사용 내역 없음'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {key.expiresAt ? formatDate(key.expiresAt) : '만료 없음'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleDeleteKey(key.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <FiTrash2 />
-                      </button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      이름
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      API 키
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      생성일
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      마지막 사용
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      만료일
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      작업
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {apiKeys.map((key) => (
+                    <tr key={key.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {key.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                        <div className="flex items-center">
+                          {keyVisibility[key.id] ? (
+                            <span>{key.key}</span>
+                          ) : (
+                            <span>••••••••••••••••••••</span>
+                          )}
+                          <button
+                            onClick={() => toggleKeyVisibility(key.id)}
+                            className="ml-2 text-gray-500 hover:text-gray-700"
+                          >
+                            {keyVisibility[key.id] ? <FiEyeOff /> : <FiEye />}
+                          </button>
+                          <button
+                            onClick={() => copyToClipboard(key.key)}
+                            className="ml-2 text-gray-500 hover:text-gray-700"
+                          >
+                            <FiCopy />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(key.createdAt)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(key.lastUsedAt)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(key.expiresAt)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => handleDeleteKey(key.id)}
+                          className="text-red-600 hover:text-red-900 flex items-center ml-auto"
+                        >
+                          <FiTrash className="mr-1" />
+                          삭제
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
     </Layout>
   );
-};
-
-export default ApiKeys; 
+} 
