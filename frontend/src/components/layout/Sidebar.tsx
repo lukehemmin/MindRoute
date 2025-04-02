@@ -11,7 +11,7 @@ import {
   FiShield,
   FiBarChart2
 } from 'react-icons/fi';
-import { useAuthStore } from '../../store/auth';
+import useAuthStore from '../../utils/authStore';
 
 interface SidebarProps {
   isOpen: boolean;
