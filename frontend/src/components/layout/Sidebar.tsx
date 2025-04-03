@@ -21,7 +21,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const router = useRouter();
-  const { user, isAdmin } = useAuthStore();
+  const { user } = useAuthStore();
   
   // 명시적으로 사용자 권한 확인
   const userIsAdmin = user?.role === 'admin';
@@ -80,10 +80,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   ];
 
   const isActive = (path: string) => {
-    if (path === '/dashboard') {
-      return router.pathname === path;
+    // 정확한 경로 일치 확인
+    if (path === router.pathname) {
+      return true;
     }
-    return router.pathname.startsWith(path);
+    
+    // 특정 경로는 정확히 일치할 때만 활성화
+    if ((path === '/dashboard' || path === '/admin') && path !== router.pathname) {
+      return false;
+    }
+    
+    // 하위 경로 처리(admin/providers 등)
+    if (router.pathname.startsWith(path) && path !== '/') {
+      return true;
+    }
+    
+    return false;
   };
 
   return (
@@ -146,4 +158,4 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   );
 };
 
-export default Sidebar; 
+export default Sidebar;
