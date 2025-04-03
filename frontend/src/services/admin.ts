@@ -161,8 +161,30 @@ export const createProvider = async (data: ProviderInput) => {
 
 // 제공업체 수정
 export const updateProvider = async (providerId: string, data: Partial<ProviderInput>) => {
-  const response = await api.put<{ success: boolean, message: string, data: Provider }>(`/api/admin/providers/${providerId}`, data);
-  return response.data;
+  try {
+    // 파라미터 로깅
+    console.log(`제공업체 업데이트 요청 데이터:`, {
+      providerId,
+      data: {
+        ...data,
+        apiKey: data.apiKey ? '******' : undefined // API 키는 로그에 노출되지 않도록 함
+      }
+    });
+    
+    const response = await api.put<{ success: boolean, message: string, data: Provider }>(`/api/admin/providers/${providerId}`, data);
+    console.log('제공업체 업데이트 응답:', response.data);
+    
+    return response.data;
+  } catch (error: any) {
+    console.error('제공업체 업데이트 오류:', error);
+    console.error('오류 상세:', error.response?.data || error.message);
+    
+    return {
+      success: false,
+      message: error.response?.data?.message || '제공업체 정보 업데이트에 실패했습니다.',
+      data: null
+    };
+  }
 };
 
 // 제공업체 삭제
