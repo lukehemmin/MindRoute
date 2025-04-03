@@ -5,6 +5,33 @@ import useAuthStore from '../../utils/authStore';
 import { getAllProviders, createProvider, updateProvider, deleteProvider } from '../../services/admin';
 import { ProviderInput } from '../../services/admin';
 import { Provider } from '../../services/ai';
+import { toast } from 'react-hot-toast';
+import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { 
+  Button, 
+  Card, 
+  Modal, 
+  Label, 
+  TextInput, 
+  Select,
+  Spinner,
+  Checkbox
+} from 'flowbite-react';
+
+// 제공업체 수정용 인터페이스 (ai.ts의 Provider와 admin.ts의 ProviderInput을 조합)
+interface EditingProvider {
+  id: string;
+  name: string;
+  type: string;
+  apiKey: string;
+  endpointUrl?: string;
+  allowImages?: boolean;
+  allowVideos?: boolean;
+  allowFiles?: boolean;
+  maxTokens?: number;
+  settings?: Record<string, any>;
+  active: boolean;
+}
 
 const ProvidersAdmin: React.FC = () => {
   const router = useRouter();
@@ -13,7 +40,7 @@ const ProvidersAdmin: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [editingProvider, setEditingProvider] = useState<ProviderInput | null>(null);
+  const [editingProvider, setEditingProvider] = useState<EditingProvider | null>(null);
   const [isCreating, setIsCreating] = useState<boolean>(false);
 
   useEffect(() => {
@@ -143,7 +170,7 @@ const ProvidersAdmin: React.FC = () => {
       allowImages: provider.allowImages,
       allowVideos: provider.allowVideos,
       allowFiles: provider.allowFiles,
-      maxTokens: 0,
+      maxTokens: provider.allowImages ? 4096 : 0, // 기본값 설정
       settings: {},
       active: provider.available
     });
@@ -176,34 +203,46 @@ const ProvidersAdmin: React.FC = () => {
     
     try {
       setLoading(true);
+      console.log('저장 중인 제공업체 데이터:', editingProvider);
       
       if (isCreating) {
         // 새 제공업체 생성
-        const response = await createProvider(editingProvider);
+        const response = await createProvider({
+          ...editingProvider,
+          active: editingProvider.active
+        });
         
         if (response.success) {
+          toast.success('제공업체가 성공적으로 생성되었습니다.');
           setProviders([...providers, response.data]);
           setIsModalOpen(false);
           setEditingProvider(null);
         } else {
           setError('제공업체 생성에 실패했습니다.');
+          toast.error('제공업체 생성에 실패했습니다.');
         }
       } else {
         // 기존 제공업체 수정
-        const response = await updateProvider(editingProvider.id, editingProvider);
+        const response = await updateProvider(editingProvider.id, {
+          ...editingProvider,
+          active: editingProvider.active
+        });
         
         if (response.success) {
-          setProviders(providers.map(provider => 
-            provider.id === editingProvider.id ? response.data : provider));
+          toast.success('제공업체가 성공적으로 업데이트되었습니다.');
+          // 성공적으로 업데이트되면 목록 다시 불러오기
+          fetchProviders();
           setIsModalOpen(false);
           setEditingProvider(null);
         } else {
           setError('제공업체 수정에 실패했습니다.');
+          toast.error('제공업체 수정에 실패했습니다.');
         }
       }
     } catch (err) {
       console.error('제공업체 저장 오류:', err);
       setError('제공업체를 저장하는 중 오류가 발생했습니다.');
+      toast.error('제공업체 저장 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
