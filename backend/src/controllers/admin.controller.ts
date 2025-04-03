@@ -131,7 +131,7 @@ export const getAllProviders = async (req: Request, res: Response, next: NextFun
         'id', 'name', 'type', 'endpointUrl', 'allowImages', 'allowVideos', 
         'allowFiles', 'maxTokens', 'active', 'createdAt'
       ],
-      order: [['createdAt', 'DESC']],
+      order: [['id', 'ASC']],
     });
 
     res.status(200).json({
