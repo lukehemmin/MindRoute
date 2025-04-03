@@ -202,7 +202,7 @@ export const updateProvider = async (req: Request, res: Response, next: NextFunc
     const { 
       name, apiKey, endpointUrl, 
       allowImages, allowVideos, allowFiles, 
-      maxTokens, settings, isActive, type
+      maxTokens, settings, active, type
     } = req.body;
 
     const provider = await Provider.findByPk(providerId);
@@ -220,7 +220,7 @@ export const updateProvider = async (req: Request, res: Response, next: NextFunc
     if (allowFiles !== undefined) provider.allowFiles = allowFiles;
     if (maxTokens !== undefined) provider.maxTokens = maxTokens;
     if (settings) provider.settings = settings;
-    if (isActive !== undefined) provider.active = isActive;
+    if (active !== undefined) provider.active = active;
 
     // API 키가 제공된 경우 암호화
     if (apiKey) {
@@ -237,6 +237,13 @@ export const updateProvider = async (req: Request, res: Response, next: NextFunc
       data: {
         id: provider.id,
         name: provider.name,
+        type: provider.type,
+        endpointUrl: provider.endpointUrl,
+        allowImages: provider.allowImages,
+        allowVideos: provider.allowVideos,
+        allowFiles: provider.allowFiles,
+        maxTokens: provider.maxTokens,
+        active: provider.active
       },
     });
   } catch (error) {
