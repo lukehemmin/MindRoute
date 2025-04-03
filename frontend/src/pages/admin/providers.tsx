@@ -234,6 +234,17 @@ const ProvidersAdmin: React.FC = () => {
           fetchProviders();
           setIsModalOpen(false);
           setEditingProvider(null);
+
+          // API 키가 업데이트 되었는지 확인 메시지 추가
+          if (editingProvider.apiKey) {
+            toast.success('API 키가 성공적으로 업데이트되었습니다.');
+          }
+          
+          // 활성화 상태 변경 메시지 추가
+          const currentProvider = providers.find(p => p.id === editingProvider.id);
+          if (currentProvider && currentProvider.available !== editingProvider.active) {
+            toast.success(`제공업체가 ${editingProvider.active ? '활성화' : '비활성화'} 되었습니다.`);
+          }
         } else {
           setError('제공업체 수정에 실패했습니다.');
           toast.error('제공업체 수정에 실패했습니다.');
