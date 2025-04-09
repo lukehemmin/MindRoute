@@ -113,6 +113,11 @@ Provider.init(
         if (provider.changed('apiKey')) {
           provider.apiKey = encrypt(provider.apiKey);
         }
+        
+        // active 필드 변경사항 로깅
+        if (provider.changed('active')) {
+          console.log(`Provider 활성화 상태 변경: ${provider.id}, 새 상태: ${provider.active}`);
+        }
       },
     },
   }

@@ -167,14 +167,39 @@ export const updateProvider = async (providerId: string, data: Partial<ProviderI
       providerId,
       data: {
         ...data,
-        apiKey: data.apiKey ? '******' : undefined // API 키는 로그에 노출되지 않도록 함
+        apiKey: data.apiKey ? '******' : undefined, // API 키는 로그에 노출되지 않도록 함
+        active: data.active, // active 상태 로깅 명시적 추가
+        maxTokens: data.maxTokens
       }
     });
     
-    const response = await api.put<{ success: boolean, message: string, data: Provider }>(`/api/admin/providers/${providerId}`, data);
+    // active 필드가 undefined가 아닌 경우에만 명시적으로 포함
+    const payload = {
+      ...data,
+      active: data.active !== undefined ? Boolean(data.active) : undefined // active 필드를 명시적으로 Boolean 타입으로 변환
+    };
+    
+    console.log('실제 전송 payload:', {
+      ...payload,
+      apiKey: payload.apiKey ? '******' : undefined
+    });
+    
+    const response = await api.put<{ success: boolean, message: string, data: Provider }>(
+      `/api/admin/providers/${providerId}`, 
+      payload
+    );
     console.log('제공업체 업데이트 응답:', response.data);
     
-    return response.data;
+    if (response.data && response.data.success) {
+      return response.data;
+    } else {
+      console.error('API 응답 성공했으나 내부 성공 플래그가 false:', response.data);
+      return {
+        success: false,
+        message: response.data?.message || '제공업체 정보 업데이트에 실패했습니다.',
+        data: null
+      };
+    }
   } catch (error: any) {
     console.error('제공업체 업데이트 오류:', error);
     console.error('오류 상세:', error.response?.data || error.message);

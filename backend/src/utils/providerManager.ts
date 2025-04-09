@@ -171,6 +171,8 @@ class ProviderManager {
         return;
       }
       
+      logger.info(`제공업체 새로고침 시작: ${provider.name}, ID: ${providerId}, 활성상태: ${provider.active}`);
+      
       // 비활성화된 경우 캐시에서 제거
       if (!provider.active) {
         this.providers.delete(providerId);

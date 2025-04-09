@@ -220,13 +220,34 @@ export const updateProvider = async (req: Request, res: Response, next: NextFunc
     if (allowFiles !== undefined) provider.allowFiles = allowFiles;
     if (maxTokens !== undefined) provider.maxTokens = maxTokens;
     if (settings) provider.settings = settings;
-    if (active !== undefined) provider.active = active;
+    
+    // active 값을 명시적으로 설정
+    if (active !== undefined) {
+      console.log(`활성화 상태 변경: ${provider.id}, 이전: ${provider.active}, 새 값: ${active}`);
+      
+      // Boolean으로 명시적 변환하여 타입 문제 방지
+      const boolActive = Boolean(active);
+      
+      // 현재 값과 다를 경우에만 변경
+      if (provider.active !== boolActive) {
+        // Sequelize가 변경을 강제로 감지하도록 처리
+        provider.active = !provider.active; // 현재 값 반전
+        provider.changed('active', true); // 명시적으로 변경됨을 표시
+        provider.active = boolActive; // 실제 목표값으로 설정
+        console.log(`활성화 상태 실제 변경됨: ${!provider.active} -> ${boolActive}`);
+      } else {
+        console.log(`활성화 상태 변경 없음: 현재값과 입력값 동일 (${boolActive})`);
+      }
+    }
 
     // API 키가 제공된 경우 암호화
     if (apiKey) {
       provider.apiKey = await encrypt(apiKey);
     }
 
+    // 변경된 필드 로깅
+    console.log('제공업체 변경된 필드:', provider.changed());
+    
     await provider.save();
 
     logger.info(`제공업체 정보가 업데이트되었습니다: ${providerId}`);

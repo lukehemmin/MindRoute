@@ -129,7 +129,49 @@ const ProvidersAdmin: React.FC = () => {
       
       if (response.success) {
         console.log("성공적으로 제공업체 목록을 받았습니다:", response.data);
-        setProviders(response.data);
+        
+        // 백엔드 응답이 유효한지 확인
+        if (Array.isArray(response.data)) {
+          // 백엔드 응답 타입에 맞춰 명시적 타입 정의
+          type BackendProvider = {
+            id: string;
+            name: string;
+            type: string;
+            endpointUrl?: string;
+            allowImages?: boolean;
+            allowVideos?: boolean;
+            allowFiles?: boolean;
+            maxTokens?: number;
+            active?: boolean;
+          };
+          
+          // 백엔드의 응답을 프론트엔드 Provider 인터페이스로 변환
+          const mappedProviders = response.data.map((backendProvider: BackendProvider) => {
+            // 백엔드 응답을 로깅
+            console.log(`제공업체 '${backendProvider.name}' 데이터:`, backendProvider);
+            
+            // 프론트엔드 Provider 인터페이스에 맞게 매핑
+            const provider: Provider = {
+              id: backendProvider.id,
+              name: backendProvider.name,
+              type: backendProvider.type,
+              description: backendProvider.name, // description이 없으면 name을 사용
+              available: !!backendProvider.active, // active -> available로 매핑
+              allowImages: !!backendProvider.allowImages,
+              allowVideos: !!backendProvider.allowVideos,
+              allowFiles: !!backendProvider.allowFiles,
+              apiEndpoint: backendProvider.endpointUrl || ''
+            };
+            
+            return provider;
+          });
+          
+          setProviders(mappedProviders);
+          console.log("매핑된 제공업체 목록:", mappedProviders);
+        } else {
+          console.error("응답 데이터가 배열이 아닙니다:", response.data);
+          setError('제공업체 데이터 형식이 올바르지 않습니다.');
+        }
       } else {
         console.error("제공업체 목록 가져오기 실패:", response.message);
         setError('제공업체 목록을 가져오는데 실패했습니다.');
@@ -161,6 +203,13 @@ const ProvidersAdmin: React.FC = () => {
   };
 
   const handleEditProvider = (provider: Provider) => {
+    console.log('편집할 제공업체 데이터:', {
+      id: provider.id,
+      name: provider.name,
+      type: provider.type,
+      available: provider.available
+    });
+    
     setEditingProvider({
       id: provider.id,
       name: provider.name,
@@ -172,8 +221,13 @@ const ProvidersAdmin: React.FC = () => {
       allowFiles: provider.allowFiles,
       maxTokens: provider.allowImages ? 4096 : 0, // 기본값 설정
       settings: {},
+      active: provider.available // 백엔드 active와 프론트엔드 available 간 매핑
+    });
+    console.log('편집용 제공업체 객체 생성:', {
+      id: provider.id,
       active: provider.available
     });
+    
     setIsCreating(false);
     setIsModalOpen(true);
   };
@@ -203,7 +257,10 @@ const ProvidersAdmin: React.FC = () => {
     
     try {
       setLoading(true);
-      console.log('저장 중인 제공업체 데이터:', editingProvider);
+      console.log('저장 중인 제공업체 데이터:', {
+        ...editingProvider,
+        apiKey: editingProvider.apiKey ? '******' : undefined
+      });
       
       if (isCreating) {
         // 새 제공업체 생성
@@ -214,7 +271,7 @@ const ProvidersAdmin: React.FC = () => {
         
         if (response.success) {
           toast.success('제공업체가 성공적으로 생성되었습니다.');
-          setProviders([...providers, response.data]);
+          await fetchProviders(); // 목록 새로고침으로 변경
           setIsModalOpen(false);
           setEditingProvider(null);
         } else {
@@ -229,22 +286,26 @@ const ProvidersAdmin: React.FC = () => {
         });
         
         if (response.success) {
-          toast.success('제공업체가 성공적으로 업데이트되었습니다.');
-          // 성공적으로 업데이트되면 목록 다시 불러오기
-          fetchProviders();
-          setIsModalOpen(false);
-          setEditingProvider(null);
-
-          // API 키가 업데이트 되었는지 확인 메시지 추가
+          // 사용자에게 명확한 피드백 제공
+          let successMessage = '제공업체가 성공적으로 업데이트되었습니다.';
+          
+          // API 키 업데이트 확인
           if (editingProvider.apiKey) {
-            toast.success('API 키가 성공적으로 업데이트되었습니다.');
+            successMessage += ' API 키가 업데이트되었습니다.';
           }
           
-          // 활성화 상태 변경 메시지 추가
+          // 활성화 상태 변경 확인
           const currentProvider = providers.find(p => p.id === editingProvider.id);
           if (currentProvider && currentProvider.available !== editingProvider.active) {
-            toast.success(`제공업체가 ${editingProvider.active ? '활성화' : '비활성화'} 되었습니다.`);
+            successMessage += ` 제공업체가 ${editingProvider.active ? '활성화' : '비활성화'} 되었습니다.`;
           }
+          
+          toast.success(successMessage);
+          
+          // 제공업체 목록 즉시 갱신
+          await fetchProviders();
+          setIsModalOpen(false);
+          setEditingProvider(null);
         } else {
           setError('제공업체 수정에 실패했습니다.');
           toast.error('제공업체 수정에 실패했습니다.');

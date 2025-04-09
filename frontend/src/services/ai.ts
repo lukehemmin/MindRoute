@@ -7,7 +7,7 @@ export interface Provider {
   name: string;
   type: string;
   description: string;
-  available: boolean;
+  available: boolean; // 백엔드의 active 필드와 매핑됨
   allowImages: boolean;
   allowVideos: boolean;
   allowFiles: boolean;
