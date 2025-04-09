@@ -26,6 +26,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         router.pathname !== '/') {
       router.push('/login');
     }
+    // 이미 인증된 사용자를 대시보드나 다른 페이지로 리다이렉션하는 로직은 제거
   }, [isAuthenticated, loading, router]);
 
   const toggleSidebar = () => {

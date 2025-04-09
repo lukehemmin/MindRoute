@@ -16,9 +16,11 @@ const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
 
-  // 이미 로그인된 사용자 자동 리다이렉트
+  // 이미 로그인된 사용자 자동 리다이렉트 - 로그인 페이지에서만 작동
   useEffect(() => {
-    if (isAuthenticated) {
+    // 로그인 페이지에 직접 접근한 경우에만 리다이렉트 수행
+    // router.pathname이 '/login'인 경우에만 리다이렉트
+    if (isAuthenticated && router.pathname === '/login') {
       const user = useAuthStore.getState().user;
       if (user?.role === 'admin') {
         router.push('/admin');

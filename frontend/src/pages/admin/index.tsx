@@ -21,6 +21,8 @@ const AdminDashboard: React.FC = () => {
         router.push('/dashboard');
         return;
       }
+      
+      // 이미 인증되고 관리자인 경우 현재 페이지에 유지
     }
   }, [isAuthenticated, loading, isAdmin, router]);
 
