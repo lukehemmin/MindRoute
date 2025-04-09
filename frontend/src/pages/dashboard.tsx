@@ -19,13 +19,16 @@ const Dashboard: React.FC = () => {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   useEffect(() => {
-    if (!loading) {
-      if (!isAuthenticated) {
-        router.push('/login');
-      } else {
-        fetchStats();
-      }
+    if (loading) {
+      return;
     }
+    
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+    
+    fetchStats();
   }, [isAuthenticated, loading, router]);
 
   const fetchStats = async () => {

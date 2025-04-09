@@ -15,12 +15,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // 인증 상태 체크
   useEffect(() => {
-    // 인증 상태 확인 (선택적)
+    // 필요시 추가 로직 구현
   }, []);
 
-  // 인증되지 않은 사용자 리다이렉트 처리
+  // 인증되지 않은 사용자만 리다이렉트 처리
   useEffect(() => {
-    if (!loading && !isAuthenticated && router.pathname !== '/login' && router.pathname !== '/register') {
+    if (!loading && !isAuthenticated && 
+        router.pathname !== '/login' && 
+        router.pathname !== '/register' && 
+        router.pathname !== '/') {
       router.push('/login');
     }
   }, [isAuthenticated, loading, router]);
@@ -29,7 +32,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  // 로그인 페이지에서는 레이아웃 없이 표시
+  // 로그인/회원가입 페이지에서는 레이아웃 없이 표시
   if (router.pathname === '/login' || router.pathname === '/register' || loading) {
     return <>{children}</>;
   }

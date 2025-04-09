@@ -16,6 +16,18 @@ const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
 
+  // 이미 로그인된 사용자 자동 리다이렉트
+  useEffect(() => {
+    if (isAuthenticated) {
+      const user = useAuthStore.getState().user;
+      if (user?.role === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
+    }
+  }, [isAuthenticated, router]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));

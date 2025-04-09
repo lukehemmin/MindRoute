@@ -44,57 +44,37 @@ const ProvidersAdmin: React.FC = () => {
   const [isCreating, setIsCreating] = useState<boolean>(false);
 
   useEffect(() => {
-    // 인증 로딩 상태일 때는 아직 체크하지 않음
+    // 인증 상태 로딩 중이면 아무것도 하지 않음
     if (useAuthStore.getState().loading) {
-      console.log('인증 상태 로딩 중...');
       return;
     }
     
-    // 인증되지 않았거나 관리자가 아닌 경우 접근 거부
-    if (!isAuthenticated) {
-      console.log('인증되지 않음, 로그인 페이지로 리다이렉트');
+    const authState = useAuthStore.getState();
+    // 인증되지 않은 경우에만 로그인 페이지로 리다이렉트
+    if (!authState.isAuthenticated) {
       router.push('/login');
       return;
     }
-
-    if (!useAuthStore.getState().isAdmin()) {
-      console.log('관리자 권한 없음, 대시보드로 리다이렉트');
+    
+    // 관리자가 아닌 경우에만 대시보드로 리다이렉트
+    if (!authState.isAdmin()) {
       router.push('/dashboard');
       return;
     }
-
+    
     // 인증 및 권한 확인 후 데이터 로드
     fetchProviders();
-  }, [isAuthenticated, router]);
-
-  // 인증 상태 변경 감지
-  useEffect(() => {
-    // 컴포넌트 마운트 시 인증 상태 로딩 완료 확인
-    const checkAuth = () => {
-      const authState = useAuthStore.getState();
-      if (!authState.loading) {
-        if (!authState.isAuthenticated) {
-          console.log('인증 로딩 완료: 인증되지 않음');
-          router.push('/login');
-        } else if (!authState.isAdmin()) {
-          console.log('인증 로딩 완료: 관리자 아님');
-          router.push('/dashboard');
-        } else {
-          console.log('인증 로딩 완료: 관리자 권한 확인됨');
-          fetchProviders();
-        }
-      }
-    };
-
-    // 초기 한 번 체크
-    checkAuth();
     
     // 인증 상태 변경 감지를 위한 구독
     const unsubscribe = useAuthStore.subscribe(
       (state) => {
-        // 로딩 상태가 false로 변경될 때 인증 상태 체크
+        // 인증 상태가 변경될 때 확인
         if (!state.loading) {
-          checkAuth();
+          if (!state.isAuthenticated) {
+            router.push('/login');
+          } else if (!state.isAdmin()) {
+            router.push('/dashboard');
+          }
         }
       }
     );
