@@ -60,11 +60,12 @@ const Playground: React.FC = () => {
             fetchModels(providerId);
           }
         } else {
-          setError('제공업체 목록을 가져오는데 실패했습니다.');
+          setError(result.message || '제공업체 목록을 가져오는데 실패했습니다.');
+          console.error('제공업체 목록 조회 실패:', result.message);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('제공업체 목록 조회 오류:', err);
-        setError('제공업체 목록을 가져오는 중 오류가 발생했습니다.');
+        setError(err.message || '제공업체 목록을 가져오는 중 오류가 발생했습니다.');
       } finally {
         setLoadingProviders(false);
       }
@@ -92,13 +93,16 @@ const Playground: React.FC = () => {
         setModels(result.data);
         if (result.data.length > 0) {
           setSelectedModel(result.data[0].id);
+        } else {
+          setError('사용 가능한 모델이 없습니다. 다른 제공업체를 선택해주세요.');
         }
       } else {
-        setError('모델 목록을 가져오는데 실패했습니다.');
+        setError(result.message || '모델 목록을 가져오는데 실패했습니다.');
+        console.error('모델 목록 조회 실패:', result.message);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('모델 목록 조회 오류:', err);
-      setError('모델 목록을 가져오는 중 오류가 발생했습니다.');
+      setError(err.message || '모델 목록을 가져오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }

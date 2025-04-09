@@ -1,34 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../middlewares/error.middleware';
 import logger from '../utils/logger';
+import aiService from '../services/ai.service';
 
 /**
  * 사용 가능한 모든 AI 제공업체 목록 조회
  */
 export const getProviders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    // 실제 구현에서는 데이터베이스에서 조회
-    const providers = [
-      {
-        id: 'openai',
-        name: 'OpenAI',
-        description: 'OpenAI API 서비스',
-        isActive: true,
-      },
-      {
-        id: 'anthropic',
-        name: 'Anthropic',
-        description: 'Anthropic Claude 모델',
-        isActive: true,
-      },
-    ];
-
+    const providers = await aiService.getProviders();
+    
     res.status(200).json({
       success: true,
-      data: providers,
+      providers: providers,
     });
   } catch (error) {
-    next(error);
+    logger.error('제공업체 목록 조회 오류:', error);
+    next(new ApiError(500, '제공업체 목록을 가져오는 중 오류가 발생했습니다.'));
   }
 };
 
@@ -39,48 +27,19 @@ export const getModels = async (req: Request, res: Response, next: NextFunction)
   try {
     const { providerId } = req.params;
 
-    // 실제 구현에서는 데이터베이스에서 조회
-    const models = {
-      openai: [
-        {
-          id: 'gpt-4',
-          name: 'GPT-4',
-          description: 'GPT-4 모델',
-          isActive: true,
-        },
-        {
-          id: 'gpt-3.5-turbo',
-          name: 'GPT-3.5 Turbo',
-          description: 'GPT-3.5 Turbo 모델',
-          isActive: true,
-        },
-      ],
-      anthropic: [
-        {
-          id: 'claude-3-opus',
-          name: 'Claude 3 Opus',
-          description: 'Claude 3 Opus 모델',
-          isActive: true,
-        },
-        {
-          id: 'claude-3-sonnet',
-          name: 'Claude 3 Sonnet',
-          description: 'Claude 3 Sonnet 모델',
-          isActive: true,
-        },
-      ],
-    };
-
-    if (!models[providerId as keyof typeof models]) {
-      throw ApiError.notFound(`프로바이더 ID ${providerId}에 대한 모델을 찾을 수 없습니다.`);
+    if (!providerId) {
+      throw ApiError.badRequest('프로바이더 ID는 필수입니다.');
     }
+
+    const models = await aiService.getModels(providerId);
 
     res.status(200).json({
       success: true,
-      data: models[providerId as keyof typeof models],
+      models: models,
     });
-  } catch (error) {
-    next(error);
+  } catch (error: any) {
+    logger.error(`모델 목록 조회 오류 (${req.params.providerId}):`, error);
+    next(new ApiError(error.status || 500, error.message || '모델 목록을 가져오는 중 오류가 발생했습니다.'));
   }
 };
 
