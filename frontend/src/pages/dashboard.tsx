@@ -77,10 +77,28 @@ const Dashboard: React.FC = () => {
         <div className="flex items-center justify-center h-screen">
           <div className="text-center">
             <div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full text-primary-600 mb-4" role="status">
-              <span className="visually-hidden">로딩 중...</span>
             </div>
             <p className="text-lg">로딩 중...</p>
           </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center h-screen">
+          <div className="text-center mb-4">
+            <p className="text-lg font-semibold text-red-600">로그인이 필요합니다</p>
+            <p className="text-gray-600 mt-2">이 페이지에 접근하려면 로그인이 필요합니다</p>
+          </div>
+          <button 
+            onClick={() => router.push('/login')}
+            className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded"
+          >
+            로그인 페이지로 이동
+          </button>
         </div>
       </Layout>
     );
