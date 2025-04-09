@@ -11,6 +11,7 @@ MindRoute는 여러 AI 제공업체(OpenAI, Anthropic, Google)를 단일 백엔�
 - **관리자 페이지**: 사용자 관리, 제공업체 설정, 문의 응답 기능
 - **API 문서**: Swagger를 통한 자동 문서화
 - **웹 기반 Playground**: AI 제공업체와의 상호작용을 테스트할 수 있는 UI
+- **API 키 관리**: 사용자별 API 키 생성 및 관리
 
 ## 기술 스택
 
@@ -21,7 +22,7 @@ MindRoute는 여러 AI 제공업체(OpenAI, Anthropic, Google)를 단일 백엔�
 - **인증**: JWT (액세스 토큰/리프레시 토큰)
 - **로깅**: Winston
 - **보안**: bcrypt(비밀번호 해싱), express-rate-limit(요청 제한)
-- **파일 처리**: express-fileupload
+- **파일 처리**: express-fileupload, multer
 
 ### 프론트엔드
 - **프레임워크**: React, Next.js
@@ -75,6 +76,7 @@ MindRoute는 여러 AI 제공업체(OpenAI, Anthropic, Google)를 단일 백엔�
 
 ### 상태 확인
 - `GET /health`: API 게이트웨이 상태 확인 (데이터베이스 연결 상태 포함)
+- `GET /api/ai/status`: AI 서비스 상태 확인
 
 ### 인증
 - `POST /api/auth/register`: 새 사용자 등록
@@ -88,16 +90,31 @@ MindRoute는 여러 AI 제공업체(OpenAI, Anthropic, Google)를 단일 백엔�
 - `GET /api/auth/profile`: 사용자 프로필 조회
 - `PUT /api/auth/profile`: 사용자 프로필 업데이트
 
+### API 키 관리
+- `GET /api/users/api-keys`: 사용자 API 키 목록 조회
+- `POST /api/users/api-keys`: 새 API 키 생성
+- `DELETE /api/users/api-keys/:id`: API 키 삭제
+
 ### AI API
 - `GET /api/ai/providers`: 사용 가능한 AI 제공업체 목록 조회
 - `GET /api/ai/providers/:providerId/models`: 특정 제공업체의 모델 목록 조회
 - `POST /api/ai/providers/:providerId/chat`: 채팅 완성 요청
 - `POST /api/ai/providers/:providerId/completion`: 텍스트 완성 요청
 
+### 관리자 API
+- `GET /api/admin/users`: 사용자 목록 조회
+- `PUT /api/admin/users/:id`: 사용자 정보 업데이트
+- `GET /api/admin/providers`: 제공업체 목록 조회
+- `POST /api/admin/providers`: 새 제공업체 추가
+- `PUT /api/admin/providers/:id`: 제공업체 정보 업데이트
+- `GET /api/admin/logs`: 시스템 로그 조회
+- `GET /api/admin/tickets`: 사용자 문의 조회
+
 ## 데이터베이스 스키마
 
 - **Users**: 사용자 정보 저장 (이메일, 비밀번호 해시, 역할 등)
 - **RefreshTokens**: 리프레시 토큰 정보 저장 (사용자 ID, 토큰, 만료 시간 등)
+- **ApiKeys**: 사용자 API 키 정보 저장 (키 값, 만료 시간 등)
 - **Providers**: AI 제공업체 정보 (API 키, 엔드포인트, 미디어 정책 등)
 - **UserProviders**: 사용자-제공업체 간 관계 및 사용자별 제한 설정
 - **Logs**: API 호출 로그 (사용자, 제공업체, 토큰 사용량 등)
@@ -108,10 +125,11 @@ MindRoute는 여러 AI 제공업체(OpenAI, Anthropic, Google)를 단일 백엔�
 1. ✅ 기본 아키텍처 및 POC
 2. ✅ PostgreSQL DB 모델 및 기본 인증
 3. ✅ 사용자 인증 및 계정 관리
-4. 🔄 제공업체 관리 및 AI 엔드포인트 라우팅 (진행 중)
-5. ⬜ 파일 업로드 및 미디어 처리
-6. ⬜ 웹 UI, 관리자 패널 및 로깅
-7. ⬜ API 문서 및 Playground
+4. ✅ 제공업체 관리 및 AI 엔드포인트 라우팅
+5. ✅ API 키 관리 기능
+6. 🔄 파일 업로드 및 미디어 처리 (진행 중)
+7. 🔄 웹 UI, 관리자 패널 및 로깅 (진행 중)
+8. ⬜ API 문서 및 Playground 개선
 
 ## 보안 기능
 

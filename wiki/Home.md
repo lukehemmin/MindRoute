@@ -13,6 +13,7 @@ MindRoute는 여러 AI 제공업체(OpenAI, Anthropic, Google)를 단일 백엔�
 - [API 사용법](API-Usage)
 - [웹 인터페이스 사용법](Web-Interface)
 - [Playground 튜토리얼](Playground-Tutorial)
+- [API 키 관리](API-Key-Management)
 
 ## 개발자 가이드
 
@@ -21,6 +22,7 @@ MindRoute는 여러 AI 제공업체(OpenAI, Anthropic, Google)를 단일 백엔�
 - [프론트엔드 개발 가이드](Frontend-Development)
 - [API 문서](API-Documentation)
 - [데이터베이스 스키마](Database-Schema)
+- [관리자 기능 가이드](Admin-Features)
 
 ## 기여하기
 

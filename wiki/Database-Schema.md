@@ -10,6 +10,7 @@ MindRoute는 PostgreSQL 데이터베이스를 사용하여 사용자, 제공업�
 - **RefreshTokens**: 사용자 리프레시 토큰
 - **Providers**: AI 제공업체 정보
 - **UserProviders**: 사용자별 제공업체 설정
+- **ApiKeys**: 사용자 API 키
 - **Logs**: API 호출 로그
 - **Tickets**: 사용자 문의 및 지원 요청
 
@@ -70,6 +71,34 @@ CREATE TABLE RefreshTokens (
   token VARCHAR(255) UNIQUE NOT NULL,
   expiresAt TIMESTAMP NOT NULL,
   isRevoked BOOLEAN NOT NULL DEFAULT false,
+  createdAt TIMESTAMP NOT NULL DEFAULT NOW(),
+  updatedAt TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
+
+### ApiKeys
+
+사용자 API 키를 저장합니다.
+
+| 컬럼명 | 데이터 타입 | 설명 | 제약 조건 |
+|--------|------------|------|-----------|
+| id | UUID | API 키 고유 식별자 | PRIMARY KEY |
+| userId | INTEGER | 사용자 ID | FOREIGN KEY |
+| name | VARCHAR(255) | API 키 이름 | NOT NULL |
+| key | VARCHAR(255) | API 키 값 | UNIQUE, NOT NULL |
+| lastUsedAt | TIMESTAMP | 마지막 사용 시간 | |
+| expiresAt | TIMESTAMP | 만료 시간 | |
+| createdAt | TIMESTAMP | 생성 시간 | NOT NULL, DEFAULT NOW() |
+| updatedAt | TIMESTAMP | 수정 시간 | NOT NULL, DEFAULT NOW() |
+
+```sql
+CREATE TABLE ApiKeys (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  userId INTEGER NOT NULL REFERENCES Users(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  key VARCHAR(255) UNIQUE NOT NULL,
+  lastUsedAt TIMESTAMP,
+  expiresAt TIMESTAMP,
   createdAt TIMESTAMP NOT NULL DEFAULT NOW(),
   updatedAt TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -231,6 +260,11 @@ CREATE INDEX logs_modelid_idx ON Logs(modelId);
 CREATE INDEX refreshtokens_userid_idx ON RefreshTokens(userId);
 CREATE INDEX refreshtokens_token_idx ON RefreshTokens(token);
 CREATE INDEX refreshtokens_expiresat_idx ON RefreshTokens(expiresAt);
+
+-- ApiKeys 테이블 인덱스
+CREATE INDEX apikeys_userid_idx ON ApiKeys(userId);
+CREATE INDEX apikeys_key_idx ON ApiKeys(key);
+CREATE INDEX apikeys_expiresat_idx ON ApiKeys(expiresAt);
 
 -- Tickets 테이블 인덱스
 CREATE INDEX tickets_userid_idx ON Tickets(userId);

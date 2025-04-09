@@ -120,6 +120,99 @@ POST /api/auth/logout
 }
 ```
 
+## API 키 관리
+
+MindRoute API는 사용자별로 API 키를 생성하고 관리할 수 있는 기능을 제공합니다.
+
+#### API 키 목록 조회
+
+```
+GET /api/users/api-keys
+```
+
+**헤더**:
+```
+Authorization: Bearer <access_token>
+```
+
+**응답**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "5f9d7a3e-8c5b-4e6a-9a3c-1d8f7e6b5a4d",
+      "name": "내 애플리케이션",
+      "key": "mr.abcdef1234567890",
+      "lastUsedAt": "2023-04-01T12:34:56Z",
+      "expiresAt": "2024-04-01T00:00:00Z",
+      "createdAt": "2023-04-01T10:00:00Z"
+    },
+    {
+      "id": "6e8c5b3a-9d7f-5e6b-1c4d-2a3b8f7e6d5c",
+      "name": "테스트 키",
+      "key": "mr.zyxwvu9876543210",
+      "lastUsedAt": null,
+      "expiresAt": null,
+      "createdAt": "2023-04-02T15:30:00Z"
+    }
+  ]
+}
+```
+
+#### API 키 생성
+
+```
+POST /api/users/api-keys
+```
+
+**헤더**:
+```
+Authorization: Bearer <access_token>
+```
+
+**요청 본문**:
+```json
+{
+  "name": "새 애플리케이션",
+  "expiresAt": "2025-04-01T00:00:00Z"  // 선택 사항
+}
+```
+
+**응답**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "7d8e9f0a-1b2c-3d4e-5f6a-7b8c9d0e1f2a",
+    "name": "새 애플리케이션",
+    "key": "mr.1a2b3c4d5e6f7g8h9i",
+    "expiresAt": "2025-04-01T00:00:00Z",
+    "createdAt": "2023-04-03T09:15:00Z"
+  },
+  "message": "API 키가 생성되었습니다. 이 키는 한 번만 표시되므로 안전한 곳에 저장하세요."
+}
+```
+
+#### API 키 삭제
+
+```
+DELETE /api/users/api-keys/:id
+```
+
+**헤더**:
+```
+Authorization: Bearer <access_token>
+```
+
+**응답**:
+```json
+{
+  "success": true,
+  "message": "API 키가 삭제되었습니다."
+}
+```
+
 ## AI 제공업체 API
 
 ### 제공업체 목록 조회
@@ -300,6 +393,266 @@ PUT /api/auth/profile
     "email": "user@example.com",
     "name": "홍길동 수정",
     "role": "user"
+  }
+}
+```
+
+## 관리자 API
+
+관리자 권한이 있는 사용자만 접근할 수 있는 API 엔드포인트입니다.
+
+### 사용자 관리
+
+#### 모든 사용자 조회
+
+```
+GET /api/admin/users
+```
+
+**헤더**:
+```
+Authorization: Bearer <access_token>
+```
+
+**응답**:
+```json
+{
+  "success": true,
+  "data": {
+    "users": [
+      {
+        "id": "1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p",
+        "email": "user1@example.com",
+        "name": "홍길동",
+        "role": "user",
+        "isActive": true,
+        "lastLogin": "2023-04-01T10:30:00Z",
+        "createdAt": "2023-03-15T09:00:00Z"
+      },
+      {
+        "id": "2b3c4d5e-6f7g-8h9i-0j1k-2l3m4n5o6p7q",
+        "email": "admin@example.com",
+        "name": "관리자",
+        "role": "admin",
+        "isActive": true,
+        "lastLogin": "2023-04-02T14:20:00Z",
+        "createdAt": "2023-03-10T08:00:00Z"
+      }
+    ],
+    "total": 2,
+    "page": 1,
+    "limit": 10
+  }
+}
+```
+
+#### 사용자 정보 업데이트
+
+```
+PUT /api/admin/users/:id
+```
+
+**헤더**:
+```
+Authorization: Bearer <access_token>
+```
+
+**요청 본문**:
+```json
+{
+  "name": "홍길동 (수정)",
+  "role": "admin",
+  "isActive": true
+}
+```
+
+**응답**:
+```json
+{
+  "success": true,
+  "message": "사용자 정보가 업데이트되었습니다.",
+  "data": {
+    "id": "1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p",
+    "email": "user1@example.com",
+    "name": "홍길동 (수정)",
+    "role": "admin",
+    "isActive": true,
+    "updatedAt": "2023-04-03T11:45:00Z"
+  }
+}
+```
+
+### 제공업체 관리
+
+#### 모든 제공업체 조회
+
+```
+GET /api/admin/providers
+```
+
+**헤더**:
+```
+Authorization: Bearer <access_token>
+```
+
+**응답**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "apiKey": "***********",
+      "endpointUrl": "https://api.openai.com/v1",
+      "allowImages": true,
+      "allowVideos": false,
+      "allowFiles": false,
+      "maxTokens": 4000,
+      "isActive": true,
+      "createdAt": "2023-03-01T00:00:00Z"
+    },
+    {
+      "id": "anthropic",
+      "name": "Anthropic",
+      "apiKey": "***********",
+      "endpointUrl": "https://api.anthropic.com",
+      "allowImages": false,
+      "allowVideos": false,
+      "allowFiles": false,
+      "maxTokens": 100000,
+      "isActive": true,
+      "createdAt": "2023-03-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+#### 새 제공업체 추가
+
+```
+POST /api/admin/providers
+```
+
+**헤더**:
+```
+Authorization: Bearer <access_token>
+```
+
+**요청 본문**:
+```json
+{
+  "name": "Google AI",
+  "apiKey": "api_key_here",
+  "endpointUrl": "https://generativelanguage.googleapis.com",
+  "allowImages": true,
+  "allowVideos": false,
+  "allowFiles": false,
+  "maxTokens": 30000,
+  "isActive": true,
+  "settings": {
+    "model": "gemini-pro",
+    "timeout": 30000
+  }
+}
+```
+
+**응답**:
+```json
+{
+  "success": true,
+  "message": "새 제공업체가 추가되었습니다.",
+  "data": {
+    "id": "googleai",
+    "name": "Google AI",
+    "endpointUrl": "https://generativelanguage.googleapis.com",
+    "allowImages": true,
+    "allowVideos": false,
+    "allowFiles": false,
+    "maxTokens": 30000,
+    "isActive": true,
+    "createdAt": "2023-04-03T14:20:00Z"
+  }
+}
+```
+
+### 로그 조회
+
+```
+GET /api/admin/logs
+```
+
+**헤더**:
+```
+Authorization: Bearer <access_token>
+```
+
+**쿼리 파라미터**:
+```
+startDate: 2023-04-01
+endDate: 2023-04-03
+userId: 1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p
+providerId: openai
+page: 1
+limit: 10
+```
+
+**응답**:
+```json
+{
+  "success": true,
+  "data": {
+    "logs": [
+      {
+        "id": "log-123",
+        "userId": "1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p",
+        "userName": "홍길동",
+        "providerId": "openai",
+        "modelId": "gpt-4",
+        "requestType": "chat",
+        "tokensUsed": 250,
+        "statusCode": 200,
+        "duration": 1240,
+        "createdAt": "2023-04-02T15:30:00Z"
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "limit": 10
+  }
+}
+```
+
+### 문의 관리
+
+```
+GET /api/admin/tickets
+```
+
+**헤더**:
+```
+Authorization: Bearer <access_token>
+```
+
+**응답**:
+```json
+{
+  "success": true,
+  "data": {
+    "tickets": [
+      {
+        "id": "ticket-123",
+        "userId": "1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p",
+        "userName": "홍길동",
+        "subject": "API 키 문제",
+        "message": "API 키가 작동하지 않습니다.",
+        "status": "open",
+        "createdAt": "2023-04-02T10:15:00Z"
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "limit": 10
   }
 }
 ```
