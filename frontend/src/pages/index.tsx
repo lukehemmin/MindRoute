@@ -5,14 +5,12 @@ import useAuthStore from '../utils/authStore';
 
 const Home: React.FC = () => {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, logout } = useAuthStore();
 
-  useEffect(() => {
-    // 이미 로그인되어 있으면 대시보드로 리다이렉트
-    if (isAuthenticated) {
-      router.push('/dashboard');
-    }
-  }, [isAuthenticated, router]);
+  const handleLogout = () => {
+    logout();
+    router.push('/');
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -25,15 +23,34 @@ const Home: React.FC = () => {
             </div>
             <div className="hidden md:block">
               <div className="ml-10 flex items-baseline space-x-4">
-                <Link href="/login" className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium">
-                  로그인
-                </Link>
-                <Link
-                  href="/register"
-                  className="bg-primary-600 text-white hover:bg-primary-700 px-4 py-2 rounded-md text-sm font-medium"
-                >
-                  회원가입
-                </Link>
+                {!isAuthenticated ? (
+                  <>
+                    <Link href="/login" className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium">
+                      로그인
+                    </Link>
+                    <Link
+                      href="/register"
+                      className="bg-primary-600 text-white hover:bg-primary-700 px-4 py-2 rounded-md text-sm font-medium"
+                    >
+                      회원가입
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/dashboard"
+                      className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
+                    >
+                      대시보드로 이동
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="bg-primary-600 text-white hover:bg-primary-700 px-4 py-2 rounded-md text-sm font-medium"
+                    >
+                      로그아웃
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -155,7 +172,7 @@ const Home: React.FC = () => {
                       다양한 AI 모델을 즉시 테스트하고 비교해보세요. 텍스트 생성, 이미지 처리, 코드 생성 등 다양한 작업을 수행할 수 있습니다.
                     </p>
                   </div>
-          </div>
+                </div>
 
                 <div className="flex">
                   <div className="flex-shrink-0">
@@ -180,7 +197,7 @@ const Home: React.FC = () => {
               </div>
             </div>
           </div>
-          </div>
+        </div>
 
         {/* CTA 섹션 */}
         <div className="bg-primary-700">
