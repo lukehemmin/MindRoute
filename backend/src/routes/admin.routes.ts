@@ -12,6 +12,13 @@ import {
   deleteProvider,
   getLogs,
   getLogById,
+  getAllModels,
+  getModelById,
+  createModel,
+  updateModel,
+  deleteModel,
+  getModelsByProviderId,
+  refreshProviderModels,
 } from '../controllers/admin.controller';
 
 const router = Router();
@@ -32,6 +39,15 @@ router.get('/providers', getAllProviders);
 router.post('/providers', createProvider);
 router.put('/providers/:providerId', updateProvider);
 router.delete('/providers/:providerId', deleteProvider);
+
+// AI 모델 관리 라우트
+router.get('/models', getAllModels);
+router.get('/models/:modelId', getModelById);
+router.post('/models', createModel);
+router.put('/models/:modelId', updateModel);
+router.delete('/models/:modelId', deleteModel);
+router.get('/providers/:providerId/models', getModelsByProviderId);
+router.post('/providers/:providerId/models/refresh', refreshProviderModels);
 
 // 로그 조회 라우트
 router.get('/logs', getLogs);

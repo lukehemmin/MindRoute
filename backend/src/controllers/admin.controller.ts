@@ -6,6 +6,10 @@ import { Log } from '../models/log.model';
 import { Op } from 'sequelize';
 import logger from '../utils/logger';
 import { encrypt } from '../utils/encryption';
+import { AiModel } from '../models/aiModel.model';
+import modelService from '../services/modelService';
+import { v4 as uuidv4 } from 'uuid';
+import providerManager from '../utils/providerManager';
 
 /**
  * 모든 사용자 목록 조회
@@ -144,48 +148,42 @@ export const getAllProviders = async (req: Request, res: Response, next: NextFun
 };
 
 /**
- * 새 제공업체 추가
+ * 제공업체 생성
  */
 export const createProvider = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { 
-      id, name, apiKey, endpointUrl, 
-      allowImages, allowVideos, allowFiles, 
-      maxTokens, settings, type
-    } = req.body;
+    const { name, type, apiKey, endpointUrl, settings, active } = req.body;
 
-    // ID 중복 확인
-    const existingProvider = await Provider.findByPk(id);
-    if (existingProvider) {
-      throw ApiError.conflict('이미 존재하는 제공업체 ID입니다.');
+    // 필수 필드 검증
+    if (!name || !type || !apiKey) {
+      throw ApiError.badRequest('필수 필드가 누락되었습니다.');
     }
-
-    // API 키 암호화
-    const encryptedApiKey = await encrypt(apiKey);
 
     // 제공업체 생성
     const provider = await Provider.create({
-      id,
+      id: uuidv4(),
       name,
       type,
-      apiKey: encryptedApiKey,
-      endpointUrl,
-      allowImages: allowImages !== undefined ? allowImages : false,
-      allowVideos: allowVideos !== undefined ? allowVideos : false,
-      allowFiles: allowFiles !== undefined ? allowFiles : false,
-      maxTokens: maxTokens || null,
+      apiKey, // beforeCreate 훅에서 암호화됨
+      endpointUrl: endpointUrl || null,
       settings: settings || {},
-      active: true,
+      active: active !== undefined ? Boolean(active) : true,
+      allowImages: false,
+      allowVideos: false,
+      allowFiles: false
     });
 
-    logger.info(`새 제공업체가 추가되었습니다: ${id} (${name})`);
+    logger.info(`새 제공업체가 생성되었습니다: ${name} (${provider.id})`);
 
     res.status(201).json({
       success: true,
-      message: '제공업체가 성공적으로 추가되었습니다.',
+      message: '제공업체가 성공적으로 생성되었습니다.',
       data: {
         id: provider.id,
         name: provider.name,
+        type: provider.type,
+        endpointUrl: provider.endpointUrl,
+        active: provider.active
       },
     });
   } catch (error) {
@@ -201,8 +199,7 @@ export const updateProvider = async (req: Request, res: Response, next: NextFunc
     const { providerId } = req.params;
     const { 
       name, apiKey, endpointUrl, 
-      allowImages, allowVideos, allowFiles, 
-      maxTokens, settings, active, type
+      settings, active, type
     } = req.body;
 
     const provider = await Provider.findByPk(providerId);
@@ -215,10 +212,6 @@ export const updateProvider = async (req: Request, res: Response, next: NextFunc
     if (name) provider.name = name;
     if (type) provider.type = type;
     if (endpointUrl) provider.endpointUrl = endpointUrl;
-    if (allowImages !== undefined) provider.allowImages = allowImages;
-    if (allowVideos !== undefined) provider.allowVideos = allowVideos;
-    if (allowFiles !== undefined) provider.allowFiles = allowFiles;
-    if (maxTokens !== undefined) provider.maxTokens = maxTokens;
     if (settings) provider.settings = settings;
     
     // active 값을 명시적으로 설정
@@ -260,10 +253,6 @@ export const updateProvider = async (req: Request, res: Response, next: NextFunc
         name: provider.name,
         type: provider.type,
         endpointUrl: provider.endpointUrl,
-        allowImages: provider.allowImages,
-        allowVideos: provider.allowVideos,
-        allowFiles: provider.allowFiles,
-        maxTokens: provider.maxTokens,
         active: provider.active
       },
     });
@@ -398,6 +387,187 @@ export const getLogById = async (req: Request, res: Response, next: NextFunction
     res.status(200).json({
       success: true,
       data: log,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 모든 AI 모델 조회
+ */
+export const getAllModels = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const models = await modelService.getAllModels();
+    
+    res.status(200).json({
+      success: true,
+      data: models,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 특정 제공업체의 모델 조회
+ */
+export const getModelsByProviderId = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { providerId } = req.params;
+    
+    const models = await modelService.getModelsByProviderId(providerId);
+    
+    res.status(200).json({
+      success: true,
+      data: models,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 특정 모델 조회
+ */
+export const getModelById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { modelId } = req.params;
+    
+    const model = await modelService.getModelById(modelId);
+    
+    res.status(200).json({
+      success: true,
+      data: model,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 모델 생성
+ */
+export const createModel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const modelData = req.body;
+    
+    const model = await modelService.createModel(modelData);
+    
+    res.status(201).json({
+      success: true,
+      message: 'AI 모델이 성공적으로 생성되었습니다.',
+      data: model,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 모델 업데이트
+ */
+export const updateModel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { modelId } = req.params;
+    const updateData = req.body;
+    
+    const model = await modelService.updateModel(modelId, updateData);
+    
+    res.status(200).json({
+      success: true,
+      message: 'AI 모델 정보가 업데이트되었습니다.',
+      data: model,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 모델 삭제
+ */
+export const deleteModel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { modelId } = req.params;
+    
+    await modelService.deleteModel(modelId);
+    
+    res.status(200).json({
+      success: true,
+      message: 'AI 모델이 삭제되었습니다.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 제공업체의 모델 새로고침 - 제공업체 API에서 최신 모델 목록을 가져와 DB에 저장
+ */
+export const refreshProviderModels = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { providerId } = req.params;
+    
+    if (!providerId) {
+      throw new ApiError(400, '제공업체 ID는 필수입니다.');
+    }
+    
+    // 제공업체가 존재하는지 확인
+    const provider = await Provider.findByPk(providerId);
+    if (!provider) {
+      throw new ApiError(404, '제공업체를 찾을 수 없습니다.');
+    }
+    
+    // 제공업체가 활성화되어 있는지 확인
+    if (!provider.active) {
+      throw new ApiError(400, '비활성화된 제공업체의 모델은 새로고침할 수 없습니다.');
+    }
+    
+    // 기존 데이터베이스에 저장된 모델 목록 가져오기
+    const existingModels = await AiModel.findAll({
+      where: { providerId },
+      attributes: ['modelId']
+    });
+    const existingModelIds = existingModels.map(model => model.modelId);
+    
+    // 제공업체 API에서 최신 모델 목록 가져오기
+    const providerInstance = await providerManager.getProvider(providerId);
+    if (!providerInstance) {
+      throw new ApiError(500, '제공업체 인스턴스를 초기화할 수 없습니다.');
+    }
+    
+    const apiModels = await providerInstance.getModels();
+    
+    // 새로운 모델만 필터링
+    const newModels = apiModels.filter(apiModel => !existingModelIds.includes(apiModel.id));
+    
+    // 새 모델을 데이터베이스에 저장
+    for (const model of newModels) {
+      await AiModel.create({
+        providerId,
+        name: model.name,
+        modelId: model.id,
+        allowImages: model.features?.includes('images') || false,
+        allowVideos: model.features?.includes('videos') || false,
+        allowFiles: model.features?.includes('files') || false,
+        contextWindow: model.contextWindow,
+        active: true,
+        settings: {}
+      });
+    }
+    
+    // 업데이트된 모든 모델 반환
+    const updatedModels = await AiModel.findAll({
+      where: { providerId },
+      order: [['name', 'ASC']]
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: `${newModels.length}개의 새 모델이 추가되었습니다.`,
+      data: updatedModels,
+      newModels: newModels.length > 0 ? newModels.map(m => m.name) : []
     });
   } catch (error) {
     next(error);

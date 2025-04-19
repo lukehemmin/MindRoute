@@ -10,7 +10,8 @@ import {
   FiPlay, 
   FiShield,
   FiBarChart2,
-  FiServer
+  FiServer,
+  FiCpu
 } from 'react-icons/fi';
 import useAuthStore from '../../utils/authStore';
 
@@ -71,6 +72,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
       name: '제공업체 관리',
       href: '/admin/providers',
       icon: <FiServer className="mr-3 h-5 w-5" />
+    },
+    {
+      name: 'AI 모델 관리',
+      href: '/admin/models',
+      icon: <FiCpu className="mr-3 h-5 w-5" />
     },
     {
       name: '시스템 설정',

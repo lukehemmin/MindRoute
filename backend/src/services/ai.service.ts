@@ -9,6 +9,7 @@ import {
   IMessage, 
   IFile 
 } from '../utils/providerManager';
+import { AiModel } from '../models/aiModel.model';
 
 interface ChatOptions {
   userId: number;
@@ -72,25 +73,33 @@ class AIService {
       
       // 프로바이더 가져오기
       const provider = await providerManager.getProvider(providerId);
-      const providerDb = await providerManager.getProviderDb(providerId);
       
-      if (!provider || !providerDb) {
+      if (!provider) {
         throw new Error(`프로바이더를 찾을 수 없습니다: ${providerId}`);
+      }
+      
+      // 모델 정보 가져오기
+      const aiModel = await AiModel.findOne({
+        where: { providerId, modelId: model }
+      });
+      
+      if (!aiModel) {
+        throw new Error(`모델을 찾을 수 없습니다: ${model}`);
       }
       
       // 이미지 처리
       const updatedMessages = [...messages];
       const imageFiles = files.filter((file: any) => file.mimetype?.startsWith('image/'));
       
-      if (imageFiles.length > 0 && !providerDb.allowImages) {
-        throw new Error('이 프로바이더는 이미지를 지원하지 않습니다.');
+      if (imageFiles.length > 0 && !aiModel.allowImages) {
+        throw new Error('이 모델은 이미지를 지원하지 않습니다.');
       }
       
       // 비디오 처리
       const videoFiles = files.filter((file: any) => file.mimetype?.startsWith('video/'));
       
-      if (videoFiles.length > 0 && !providerDb.allowVideos) {
-        throw new Error('이 프로바이더는 비디오를 지원하지 않습니다.');
+      if (videoFiles.length > 0 && !aiModel.allowVideos) {
+        throw new Error('이 모델은 비디오를 지원하지 않습니다.');
       }
       
       // 기타 파일 처리
@@ -98,8 +107,8 @@ class AIService {
         !file.mimetype?.startsWith('image/') && !file.mimetype?.startsWith('video/')
       );
       
-      if (otherFiles.length > 0 && !providerDb.allowFiles) {
-        throw new Error('이 프로바이더는 파일 첨부를 지원하지 않습니다.');
+      if (otherFiles.length > 0 && !aiModel.allowFiles) {
+        throw new Error('이 모델은 파일 첨부를 지원하지 않습니다.');
       }
       
       // 파일 변환 및 메시지에 추가
@@ -182,6 +191,15 @@ class AIService {
       
       if (!provider) {
         throw new Error(`프로바이더를 찾을 수 없습니다: ${providerId}`);
+      }
+      
+      // 모델 정보 가져오기
+      const aiModel = await AiModel.findOne({
+        where: { providerId, modelId: model }
+      });
+      
+      if (!aiModel) {
+        throw new Error(`모델을 찾을 수 없습니다: ${model}`);
       }
       
       // 요청 로깅 시작

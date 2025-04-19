@@ -10,12 +10,11 @@ export interface ProviderAttributes {
   type: string;
   apiKey: string;
   endpointUrl: string | null;
+  settings: Record<string, any>;
+  active: boolean;
   allowImages: boolean;
   allowVideos: boolean;
   allowFiles: boolean;
-  maxTokens: number | null;
-  settings: Record<string, any>;
-  active: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -27,12 +26,11 @@ export class Provider extends Model<ProviderAttributes> implements ProviderAttri
   public type!: string;
   public apiKey!: string;
   public endpointUrl!: string | null;
+  public settings!: Record<string, any>;
+  public active!: boolean;
   public allowImages!: boolean;
   public allowVideos!: boolean;
   public allowFiles!: boolean;
-  public maxTokens!: number | null;
-  public settings!: Record<string, any>;
-  public active!: boolean;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -68,6 +66,16 @@ Provider.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    settings: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: {},
+    },
+    active: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
     allowImages: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -82,20 +90,6 @@ Provider.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-    },
-    maxTokens: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    settings: {
-      type: DataTypes.JSONB,
-      allowNull: false,
-      defaultValue: {},
-    },
-    active: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: true,
     },
   },
   {

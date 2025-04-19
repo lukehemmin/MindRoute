@@ -226,9 +226,6 @@ class ProviderManager {
         id: provider.id,
         name: provider.name,
         type: provider.type,
-        allowImages: provider.allowImages,
-        allowVideos: provider.allowVideos,
-        allowFiles: provider.allowFiles,
         available: providerInstance?.isAvailable() || false,
       };
     });
