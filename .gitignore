@@ -37,3 +37,5 @@ coverage/
 
 # 설정 파일
 backend/config/config.json
+
+.cursorignore
