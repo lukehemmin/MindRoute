@@ -36,4 +36,26 @@
   .label {
     @apply block text-sm font-medium text-gray-700 mb-1;
   }
+  
+  /* 모달 관련 스타일 */
+  .modal-content {
+    @apply inline-block align-middle bg-white rounded-lg text-left overflow-y-auto shadow-xl transform transition-all;
+    max-height: 80vh;
+    max-width: 85vw;
+    width: auto;
+    margin: 0 auto;
+  }
+  
+  /* 모달 컨테이너 스타일 */
+  .modal-container {
+    @apply fixed z-10 inset-0 overflow-y-auto;
+  }
+  
+  .modal-flex-container {
+    @apply flex items-center justify-center min-h-screen py-12 px-4 text-center;
+  }
+  
+  .modal-backdrop {
+    @apply fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity;
+  }
 } 

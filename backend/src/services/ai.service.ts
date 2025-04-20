@@ -19,6 +19,7 @@ interface ChatOptions {
   temperature?: number;
   maxTokens?: number;
   files?: any[];
+  userApiKeyId?: string;
 }
 
 interface CompletionOptions {
@@ -28,6 +29,7 @@ interface CompletionOptions {
   model: string;
   temperature?: number;
   maxTokens?: number;
+  userApiKeyId?: string;
 }
 
 class AIService {
@@ -69,10 +71,44 @@ class AIService {
     let logId: string | null = null;
     
     try {
-      const { userId, providerId, messages, model, temperature, maxTokens, files = [] } = options;
+      const { userId, providerId, messages, model, temperature, maxTokens, files = [], userApiKeyId } = options;
       
       // 프로바이더 가져오기
-      const provider = await providerManager.getProvider(providerId);
+      let provider;
+      
+      // 사용자 API 키 처리
+      if (userApiKeyId) {
+        // 사용자 API 키 조회
+        const { ApiKey } = require('../models/apiKey.model');
+        const apiKey = await ApiKey.findOne({
+          where: { id: userApiKeyId, userId }
+        });
+        
+        if (!apiKey) {
+          throw new Error('API 키를 찾을 수 없거나 권한이 없습니다.');
+        }
+        
+        // 사용자 API 키 사용 시간 업데이트
+        await ApiKey.update({ lastUsedAt: new Date() }, { where: { id: userApiKeyId } });
+        
+        // 프로바이더 정보 가져오기
+        const providerData = await Provider.findOne({
+          where: { id: providerId }
+        });
+        
+        if (!providerData) {
+          throw new Error(`프로바이더를 찾을 수 없습니다: ${providerId}`);
+        }
+        
+        // 커스텀 프로바이더 로그 메시지
+        logger.info(`사용자 API 키(${apiKey.name})를 사용하여 ${providerData.name} 프로바이더에 요청합니다.`);
+        
+        // 기본 프로바이더 사용
+        provider = await providerManager.getProvider(providerId);
+      } else {
+        // 시스템에 등록된 기본 API 키 사용
+        provider = await providerManager.getProvider(providerId);
+      }
       
       if (!provider) {
         throw new Error(`프로바이더를 찾을 수 없습니다: ${providerId}`);
@@ -123,7 +159,7 @@ class AIService {
         });
       }
       
-      // 요청 로깅 시작
+      // 요청 로깅 시작 - API 키 ID 포함
       logId = await this.logRequest({
         userId,
         providerId,
@@ -134,6 +170,7 @@ class AIService {
           temperature,
           maxTokens,
           files: files.map((f: any) => ({ name: f.name, type: f.mimetype, size: f.size })),
+          userApiKeyId: userApiKeyId
         },
       });
       
@@ -141,24 +178,30 @@ class AIService {
       const chatRequest: IChatRequest = {
         messages: updatedMessages,
         model,
-        temperature,
-        maxTokens,
+        temperature: temperature ?? aiModel.settings?.temperature ?? 0.7,
+        maxTokens: maxTokens ?? aiModel.maxTokens ?? undefined,
         files: processedFiles,
       };
       
+      // 로깅
+      logger.info(`채팅 요청: ${model} 모델, ${updatedMessages.length}개 메시지, ${temperature ? temperature : '기본'} 온도, ${maxTokens || '기본'} 토큰 제한`);
+      
+      // 채팅 요청 실행
       const response = await provider.chat(chatRequest);
       const endTime = Date.now();
       const executionTime = endTime - startTime;
       
       // 응답 로깅 완료
-      await this.updateLog(logId, {
-        status: 'success',
-        responseBody: response,
-        executionTime,
-        promptTokens: response.usage?.promptTokens,
-        completionTokens: response.usage?.completionTokens,
-        totalTokens: response.usage?.totalTokens,
-      });
+      if (logId) {
+        await this.updateLog(logId, {
+          status: 'success',
+          responseBody: response,
+          executionTime,
+          promptTokens: response.usage?.promptTokens,
+          completionTokens: response.usage?.completionTokens,
+          totalTokens: response.usage?.totalTokens,
+        });
+      }
       
       return response;
     } catch (error: any) {
@@ -184,10 +227,44 @@ class AIService {
     let logId: string | null = null;
     
     try {
-      const { userId, providerId, prompt, model, temperature, maxTokens } = options;
+      const { userId, providerId, prompt, model, temperature, maxTokens, userApiKeyId } = options;
       
       // 프로바이더 가져오기
-      const provider = await providerManager.getProvider(providerId);
+      let provider;
+      
+      // 사용자 API 키 처리
+      if (userApiKeyId) {
+        // 사용자 API 키 조회
+        const { ApiKey } = require('../models/apiKey.model');
+        const apiKey = await ApiKey.findOne({
+          where: { id: userApiKeyId, userId }
+        });
+        
+        if (!apiKey) {
+          throw new Error('API 키를 찾을 수 없거나 권한이 없습니다.');
+        }
+        
+        // 사용자 API 키 사용 시간 업데이트
+        await ApiKey.update({ lastUsedAt: new Date() }, { where: { id: userApiKeyId } });
+        
+        // 프로바이더 정보 가져오기
+        const providerData = await Provider.findOne({
+          where: { id: providerId }
+        });
+        
+        if (!providerData) {
+          throw new Error(`프로바이더를 찾을 수 없습니다: ${providerId}`);
+        }
+        
+        // 커스텀 프로바이더 로그 메시지
+        logger.info(`사용자 API 키(${apiKey.name})를 사용하여 ${providerData.name} 프로바이더에 요청합니다.`);
+        
+        // 기본 프로바이더 사용
+        provider = await providerManager.getProvider(providerId);
+      } else {
+        // 시스템에 등록된 기본 API 키 사용
+        provider = await providerManager.getProvider(providerId);
+      }
       
       if (!provider) {
         throw new Error(`프로바이더를 찾을 수 없습니다: ${providerId}`);
@@ -202,7 +279,7 @@ class AIService {
         throw new Error(`모델을 찾을 수 없습니다: ${model}`);
       }
       
-      // 요청 로깅 시작
+      // 요청 로깅 시작 - API 키 ID 포함
       logId = await this.logRequest({
         userId,
         providerId,
@@ -212,6 +289,7 @@ class AIService {
           model,
           temperature,
           maxTokens,
+          userApiKeyId
         },
       });
       

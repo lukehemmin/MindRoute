@@ -77,9 +77,6 @@ export interface ProviderInput {
   type: string;
   apiKey: string;
   endpointUrl?: string;
-  allowImages?: boolean;
-  allowVideos?: boolean;
-  allowFiles?: boolean;
   maxTokens?: number;
   settings?: Record<string, any>;
   active?: boolean;
@@ -293,4 +290,75 @@ export interface UsageStats {
   totalTokensUsed: number;
   activeProviders: number;
   lastUsedTime: string;
-} 
+}
+
+// 제공업체 API 연결 테스트
+export const testProviderApi = async (providerId: string, providerData: Partial<ProviderInput>) => {
+  try {
+    console.log('제공업체 API 테스트 요청:', {
+      providerId,
+      data: {
+        ...providerData,
+        apiKey: providerData.apiKey ? '******' : undefined // API 키는 로그에 노출되지 않도록 함
+      }
+    });
+    
+    // 임시 제공업체 객체 생성
+    const tempProvider = {
+      id: providerId || 'temp-provider',
+      name: providerData.name || '테스트 제공업체',
+      type: providerData.type || 'openai',
+      apiKey: providerData.apiKey || '',
+      endpointUrl: providerData.endpointUrl,
+      active: true
+    };
+    
+    // 제공업체 테스트 API 호출
+    const response = await api.post<{ success: boolean, message: string, data: any }>(
+      `/api/admin/providers/test-connection`, 
+      tempProvider
+    );
+    
+    console.log('제공업체 API 테스트 응답:', response.data);
+    
+    return {
+      success: response.data.success,
+      message: response.data.message,
+      data: response.data.data
+    };
+  } catch (error: any) {
+    console.error('제공업체 API 테스트 오류:', error);
+    
+    // 오류 응답 분석
+    if (error.response) {
+      const status = error.response.status;
+      const errorData = error.response.data;
+      
+      if (status === 401) {
+        return {
+          success: false,
+          message: 'API 키 인증 실패: 유효하지 않은 API 키입니다.',
+          error: 'UNAUTHORIZED'
+        };
+      } else if (errorData && errorData.error === 'ENOTFOUND') {
+        return {
+          success: false,
+          message: '엔드포인트 URL에 연결할 수 없습니다. URL이 올바른지 확인하세요.',
+          error: 'ENOTFOUND'
+        };
+      } else if (errorData && errorData.error === 'ECONNREFUSED') {
+        return {
+          success: false,
+          message: '엔드포인트 서버가 연결을 거부했습니다. URL이 올바른지 확인하세요.',
+          error: 'ECONNREFUSED'
+        };
+      }
+    }
+    
+    return {
+      success: false,
+      message: error.response?.data?.message || '제공업체 API 테스트 중 오류가 발생했습니다.',
+      error: error.code || 'UNKNOWN_ERROR'
+    };
+  }
+}; 

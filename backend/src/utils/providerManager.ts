@@ -104,20 +104,49 @@ class ProviderManager {
   // 제공업체 인스턴스 생성
   private createProviderInstance(provider: Provider): IProvider | null {
     try {
-      const apiKey = decrypt(provider.apiKey);
-      const settings = provider.settings || {};
+      logger.info(`제공업체 ${provider.name} 인스턴스 생성 시도`);
       
-      // 제공업체 유형에 따라 적절한 인스턴스 생성
-      switch (provider.type) {
-        case ProviderType.OPENAI:
-          return new OpenAIProvider(apiKey, provider.endpointUrl || undefined, settings);
-        case ProviderType.ANTHROPIC:
-          return new AnthropicProvider(apiKey, settings);
-        case ProviderType.GOOGLE:
-          return new GoogleAIProvider(apiKey, settings);
-        default:
-          logger.error(`지원되지 않는 제공업체 유형: ${provider.type}`);
+      // 암호화된 API 키 로깅 (일부분만)
+      const encryptedKeyParts = provider.apiKey.split(':');
+      if (encryptedKeyParts.length === 2) {
+        logger.info(`암호화된 API 키 형식: [IV(${encryptedKeyParts[0].length}자):암호화된 데이터(${encryptedKeyParts[1].length}자)]`);
+      } else {
+        logger.warn(`암호화된 API 키 형식이 예상과 다릅니다: ${provider.apiKey.substring(0, 10)}...`);
+      }
+      
+      // API 키 복호화
+      try {
+        const apiKey = decrypt(provider.apiKey);
+        
+        // 복호화된 API 키 확인 (일부만 로깅)
+        if (apiKey && apiKey.length > 16) {
+          const maskedKey = `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 8)}`;
+          logger.info(`복호화된 API 키: ${maskedKey} (길이: ${apiKey.length}자)`);
+        } else {
+          logger.warn(`복호화된 API 키가 너무 짧거나 없습니다: ${apiKey || '없음'}`);
           return null;
+        }
+        
+        const settings = provider.settings || {};
+        
+        // 제공업체 유형에 따라 적절한 인스턴스 생성
+        switch (provider.type) {
+          case ProviderType.OPENAI:
+            logger.info(`OpenAI 제공업체 인스턴스 생성 중...`);
+            return new OpenAIProvider(apiKey, provider.endpointUrl || undefined, settings);
+          case ProviderType.ANTHROPIC:
+            logger.info(`Anthropic 제공업체 인스턴스 생성 중...`);
+            return new AnthropicProvider(apiKey, settings);
+          case ProviderType.GOOGLE:
+            logger.info(`Google AI 제공업체 인스턴스 생성 중...`);
+            return new GoogleAIProvider(apiKey, settings);
+          default:
+            logger.error(`지원되지 않는 제공업체 유형: ${provider.type}`);
+            return null;
+        }
+      } catch (decryptError) {
+        logger.error(`API 키 복호화 오류 (${provider.name}):`, decryptError);
+        return null;
       }
     } catch (error) {
       logger.error(`제공업체 초기화 오류 (${provider.name}):`, error);

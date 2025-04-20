@@ -412,18 +412,6 @@
                           "type": "string",
                           "example": "https://api.openai.com/v1"
                         },
-                        "allowImages": {
-                          "type": "boolean",
-                          "example": true
-                        },
-                        "allowVideos": {
-                          "type": "boolean",
-                          "example": false
-                        },
-                        "allowFiles": {
-                          "type": "boolean",
-                          "example": true
-                        },
                         "maxTokens": {
                           "type": "integer",
                           "example": 4000
@@ -499,18 +487,6 @@
                 "endpointUrl": {
                   "type": "string",
                   "example": "https://generativelanguage.googleapis.com"
-                },
-                "allowImages": {
-                  "type": "boolean",
-                  "example": true
-                },
-                "allowVideos": {
-                  "type": "boolean",
-                  "example": false
-                },
-                "allowFiles": {
-                  "type": "boolean",
-                  "example": false
                 },
                 "maxTokens": {
                   "type": "integer",

@@ -44,53 +44,138 @@ export class OpenAIProvider implements IProvider {
 
   public async getModels(): Promise<IModel[]> {
     if (!this.isAvailable()) {
+      logger.error('OpenAI provider is not available');
       return [];
     }
 
     try {
+      logger.info('Fetching models from OpenAI API...');
       const response = await this.client!.models.list();
-      return response.data.map(model => ({
-        id: model.id,
-        name: model.id,
-        // 일부 모델에 대한 추가 정보 제공
-        contextWindow: this.getContextWindowForModel(model.id),
-        features: this.getFeaturesForModel(model.id)
-      }));
+      
+      // 모델 데이터 가공
+      const models: IModel[] = [];
+      
+      for (const model of response.data) {
+        // 모델 ID 기준으로 가격 및 기능 정보 설정
+        const modelInfo = this.getModelInfo(model.id);
+        
+        models.push({
+          id: model.id,
+          name: model.id,
+          contextWindow: modelInfo.contextWindow,
+          inputPrice: modelInfo.inputPrice,
+          outputPrice: modelInfo.outputPrice,
+          features: modelInfo.features
+        });
+      }
+      
+      logger.info(`Successfully fetched ${models.length} models from OpenAI API`);
+      return models;
     } catch (error) {
       logger.error(`Error fetching OpenAI models: ${error}`);
       return [];
     }
   }
 
-  // 모델별 컨텍스트 윈도우 크기 반환
-  private getContextWindowForModel(modelId: string): number | undefined {
+  // 모델별 정보 (컨텍스트 윈도우, 가격, 기능) 반환
+  private getModelInfo(modelId: string): { 
+    contextWindow: number | undefined; 
+    inputPrice: number | undefined;
+    outputPrice: number | undefined;
+    features: string[];
+  } {
+    // 기본 값
+    const result = {
+      contextWindow: undefined as number | undefined,
+      inputPrice: undefined as number | undefined,
+      outputPrice: undefined as number | undefined,
+      features: ['text'] as string[]
+    };
+    
+    // 컨텍스트 윈도우 설정
     const contextWindows: Record<string, number> = {
       'gpt-4': 8192,
       'gpt-4-32k': 32768,
       'gpt-4-turbo': 128000,
+      'gpt-4-1106-preview': 128000,
+      'gpt-4-0125-preview': 128000,
+      'gpt-4-vision-preview': 128000,
       'gpt-3.5-turbo': 4096,
       'gpt-3.5-turbo-16k': 16384,
+      'gpt-3.5-turbo-0125': 16385,
+      'gpt-3.5-turbo-instruct': 4096
     };
     
-    // 정확한 일치가 없는 경우 부분 일치 시도
-    for (const [key, value] of Object.entries(contextWindows)) {
-      if (modelId.includes(key)) {
-        return value;
+    // 입력 토큰 가격 (USD per 1M tokens)
+    const inputPrices: Record<string, number> = {
+      'gpt-4': 0.03,
+      'gpt-4-32k': 0.06,
+      'gpt-4-turbo': 0.01,
+      'gpt-4-1106-preview': 0.01,
+      'gpt-4-0125-preview': 0.01,
+      'gpt-4-vision-preview': 0.01,
+      'gpt-3.5-turbo': 0.0015,
+      'gpt-3.5-turbo-16k': 0.003,
+      'gpt-3.5-turbo-0125': 0.0005,
+      'gpt-3.5-turbo-instruct': 0.0015
+    };
+    
+    // 출력 토큰 가격 (USD per 1M tokens)
+    const outputPrices: Record<string, number> = {
+      'gpt-4': 0.06,
+      'gpt-4-32k': 0.12,
+      'gpt-4-turbo': 0.03,
+      'gpt-4-1106-preview': 0.03,
+      'gpt-4-0125-preview': 0.03,
+      'gpt-4-vision-preview': 0.03,
+      'gpt-3.5-turbo': 0.002,
+      'gpt-3.5-turbo-16k': 0.004,
+      'gpt-3.5-turbo-0125': 0.0015,
+      'gpt-3.5-turbo-instruct': 0.002
+    };
+    
+    // 정확한 일치부터 시도하고, 없으면 부분 일치로 설정
+    if (contextWindows[modelId]) {
+      result.contextWindow = contextWindows[modelId];
+    } else {
+      // 부분 일치 시도
+      for (const [key, value] of Object.entries(contextWindows)) {
+        if (modelId.includes(key)) {
+          result.contextWindow = value;
+          break;
+        }
       }
     }
     
-    return undefined;
-  }
-
-  // 모델별 지원 기능 반환
-  private getFeaturesForModel(modelId: string): string[] {
-    const features: string[] = ['text'];
-    
-    if (modelId.includes('gpt-4-vision') || modelId.includes('gpt-4-turbo')) {
-      features.push('images');
+    // 가격 정보 설정 (1M 토큰당 가격을 1K 토큰당 가격으로 변환)
+    if (inputPrices[modelId]) {
+      result.inputPrice = inputPrices[modelId] / 1000;
+    } else {
+      for (const [key, value] of Object.entries(inputPrices)) {
+        if (modelId.includes(key)) {
+          result.inputPrice = value / 1000;
+          break;
+        }
+      }
     }
     
-    return features;
+    if (outputPrices[modelId]) {
+      result.outputPrice = outputPrices[modelId] / 1000;
+    } else {
+      for (const [key, value] of Object.entries(outputPrices)) {
+        if (modelId.includes(key)) {
+          result.outputPrice = value / 1000;
+          break;
+        }
+      }
+    }
+    
+    // 특수 기능 설정
+    if (modelId.includes('vision') || modelId.includes('gpt-4-turbo')) {
+      result.features.push('images');
+    }
+    
+    return result;
   }
 
   public async completion(request: ICompletionRequest): Promise<ICompletionResponse> {
@@ -101,12 +186,25 @@ export class OpenAIProvider implements IProvider {
     try {
       const defaultModel = this.settings?.defaultModel || 'gpt-3.5-turbo';
       
-      const response = await this.client!.completions.create({
+      // o4 모델 계열은 temperature 파라미터를 지원하지 않아 제외
+      const isO4Model = request.model.startsWith('o4-');
+      
+      // 모델별 파라미터 설정
+      const params: any = {
         model: request.model || defaultModel,
         prompt: request.prompt,
         max_tokens: this.validateMaxTokens(request.maxTokens),
-        temperature: request.temperature || 0.7,
-      });
+      };
+
+      // o4 모델이 아닌 경우에만 temperature 적용
+      if (!isO4Model && request.temperature !== undefined) {
+        params.temperature = request.temperature;
+      }
+
+      // 요청 로깅
+      logger.info(`OpenAI 텍스트 완성 요청: 모델=${request.model}, temperature=${isO4Model ? '(지원 안 함)' : request.temperature || 0.7}`);
+      
+      const response = await this.client!.completions.create(params);
 
       // OpenAI 응답을 표준 형식으로 변환
       return {
@@ -137,12 +235,25 @@ export class OpenAIProvider implements IProvider {
         messages = this.processImagesForChat(messages, request.files);
       }
 
-      const response = await this.client!.chat.completions.create({
+      // o4 모델 계열은 temperature 파라미터를 지원하지 않아 제외
+      const isO4Model = request.model.startsWith('o4-');
+      
+      // 모델별 파라미터 설정
+      const params: any = {
         model: request.model || defaultModel,
         messages: messages as any[],
         max_tokens: this.validateMaxTokens(request.maxTokens),
-        temperature: request.temperature || 0.7,
-      });
+      };
+
+      // o4 모델이 아닌 경우에만 temperature 적용
+      if (!isO4Model && request.temperature !== undefined) {
+        params.temperature = request.temperature;
+      }
+
+      // 요청 로깅
+      logger.info(`OpenAI 채팅 요청: 모델=${request.model}, temperature=${isO4Model ? '(지원 안 함)' : request.temperature || 0.7}`);
+
+      const response = await this.client!.chat.completions.create(params);
 
       // OpenAI 응답을 표준 형식으로 변환
       return {

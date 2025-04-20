@@ -12,9 +12,6 @@ export interface ProviderAttributes {
   endpointUrl: string | null;
   settings: Record<string, any>;
   active: boolean;
-  allowImages: boolean;
-  allowVideos: boolean;
-  allowFiles: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -28,9 +25,6 @@ export class Provider extends Model<ProviderAttributes> implements ProviderAttri
   public endpointUrl!: string | null;
   public settings!: Record<string, any>;
   public active!: boolean;
-  public allowImages!: boolean;
-  public allowVideos!: boolean;
-  public allowFiles!: boolean;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -76,21 +70,6 @@ Provider.init(
       allowNull: false,
       defaultValue: true,
     },
-    allowImages: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    allowVideos: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    allowFiles: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
   },
   {
     sequelize,
@@ -100,17 +79,34 @@ Provider.init(
       // API 키 암호화 훅
       beforeCreate: async (provider: Provider) => {
         if (provider.apiKey) {
+          console.log(`[beforeCreate 훅] 제공업체 ${provider.name}(${provider.id}) API 키 암호화 시작`);
           provider.apiKey = encrypt(provider.apiKey);
+          console.log(`[beforeCreate 훅] 제공업체 API 키 암호화 완료, 암호화된 키 길이: ${provider.apiKey.length}`);
         }
       },
       beforeUpdate: async (provider: Provider) => {
+        // API 키 변경 감지 및 암호화
         if (provider.changed('apiKey')) {
-          provider.apiKey = encrypt(provider.apiKey);
+          console.log(`[beforeUpdate 훅] 제공업체 ${provider.name}(${provider.id}) API 키 변경 감지됨`);
+          
+          // 변경된 API 키 값 가져오기
+          const newApiKey = provider.getDataValue('apiKey');
+          
+          // 이미 암호화된 형식인지 확인 (: 포함 여부로 판단)
+          if (newApiKey && !newApiKey.includes(':')) {
+            console.log(`[beforeUpdate 훅] 일반 텍스트 API 키 감지, 암호화 진행, 키 길이: ${newApiKey.length}`);
+            provider.setDataValue('apiKey', encrypt(newApiKey));
+            console.log(`[beforeUpdate 훅] API 키 암호화 완료, 암호화된 키 길이: ${provider.getDataValue('apiKey').length}`);
+          } else {
+            console.log(`[beforeUpdate 훅] API 키가 이미 암호화된 형식이거나 비어있음, 추가 암호화 건너뜀`);
+          }
+        } else {
+          console.log(`[beforeUpdate 훅] 제공업체 ${provider.name}(${provider.id}) API 키 변경되지 않음`);
         }
         
         // active 필드 변경사항 로깅
         if (provider.changed('active')) {
-          console.log(`Provider 활성화 상태 변경: ${provider.id}, 새 상태: ${provider.active}`);
+          console.log(`[beforeUpdate 훅] Provider 활성화 상태 변경: ${provider.id}, 새 상태: ${provider.active}`);
         }
       },
     },

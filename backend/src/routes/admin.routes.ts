@@ -19,6 +19,8 @@ import {
   deleteModel,
   getModelsByProviderId,
   refreshProviderModels,
+  refreshAllProviderModels,
+  debugProviderApiKey,
 } from '../controllers/admin.controller';
 
 const router = Router();
@@ -39,6 +41,12 @@ router.get('/providers', getAllProviders);
 router.post('/providers', createProvider);
 router.put('/providers/:providerId', updateProvider);
 router.delete('/providers/:providerId', deleteProvider);
+router.post('/providers/test-connection', debugProviderApiKey);
+
+// 개발 환경에서만 사용되는 디버그 라우트
+if (process.env.NODE_ENV !== 'production') {
+  router.get('/providers/:providerId/debug-key', debugProviderApiKey);
+}
 
 // AI 모델 관리 라우트
 router.get('/models', getAllModels);
@@ -48,6 +56,7 @@ router.put('/models/:modelId', updateModel);
 router.delete('/models/:modelId', deleteModel);
 router.get('/providers/:providerId/models', getModelsByProviderId);
 router.post('/providers/:providerId/models/refresh', refreshProviderModels);
+router.post('/models/refresh-all', refreshAllProviderModels);
 
 // 로그 조회 라우트
 router.get('/logs', getLogs);

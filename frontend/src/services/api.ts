@@ -78,6 +78,23 @@ export const refreshProviderModels = async (providerId: string) => {
 };
 
 /**
+ * 모든 활성화된 제공업체의 모델 새로고침 요청
+ * 모든 활성화된 제공업체의 API에서 최신 모델 목록을 가져와 DB에 저장
+ */
+export const refreshAllProviderModels = async () => {
+  try {
+    const response = await api.post('/api/admin/models/refresh-all');
+    return response.data;
+  } catch (error) {
+    console.error('모든 제공업체 모델 새로고침 오류:', error);
+    return {
+      success: false,
+      message: '모델 목록을 새로고침하는데 실패했습니다.',
+    };
+  }
+};
+
+/**
  * 특정 모델 가져오기
  */
 export const getModelById = async (modelId: string) => {

@@ -25,9 +25,6 @@ interface EditingProvider {
   type: string;
   apiKey: string;
   endpointUrl?: string;
-  allowImages?: boolean;
-  allowVideos?: boolean;
-  allowFiles?: boolean;
   maxTokens?: number;
   settings?: Record<string, any>;
   active: boolean;
@@ -42,6 +39,8 @@ const ProvidersAdmin: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingProvider, setEditingProvider] = useState<EditingProvider | null>(null);
   const [isCreating, setIsCreating] = useState<boolean>(false);
+  const [isApiTesting, setIsApiTesting] = useState<boolean>(false);
+  const [apiTestResult, setApiTestResult] = useState<{success: boolean, message: string, data?: any, error?: string} | null>(null);
 
   useEffect(() => {
     // 인증 상태 로딩 중이면 아무것도 하지 않음
@@ -118,9 +117,6 @@ const ProvidersAdmin: React.FC = () => {
             name: string;
             type: string;
             endpointUrl?: string;
-            allowImages?: boolean;
-            allowVideos?: boolean;
-            allowFiles?: boolean;
             maxTokens?: number;
             active?: boolean;
           };
@@ -137,9 +133,6 @@ const ProvidersAdmin: React.FC = () => {
               type: backendProvider.type,
               description: backendProvider.name, // description이 없으면 name을 사용
               available: !!backendProvider.active, // active -> available로 매핑
-              allowImages: !!backendProvider.allowImages,
-              allowVideos: !!backendProvider.allowVideos,
-              allowFiles: !!backendProvider.allowFiles,
               apiEndpoint: backendProvider.endpointUrl || ''
             };
             
@@ -171,15 +164,13 @@ const ProvidersAdmin: React.FC = () => {
       type: 'openai',
       apiKey: '',
       endpointUrl: '',
-      allowImages: false,
-      allowVideos: false,
-      allowFiles: false,
       maxTokens: 0,
       settings: {},
       active: true
     });
     setIsCreating(true);
     setIsModalOpen(true);
+    setApiTestResult(null);
   };
 
   const handleEditProvider = (provider: Provider) => {
@@ -196,10 +187,7 @@ const ProvidersAdmin: React.FC = () => {
       type: provider.type,
       apiKey: '',  // 보안상 API 키는 빈 값으로 표시
       endpointUrl: provider.apiEndpoint,
-      allowImages: provider.allowImages,
-      allowVideos: provider.allowVideos,
-      allowFiles: provider.allowFiles,
-      maxTokens: provider.allowImages ? 4096 : 0, // 기본값 설정
+      maxTokens: 0, // 기본값 설정
       settings: {},
       active: provider.available // 백엔드 active와 프론트엔드 available 간 매핑
     });
@@ -210,6 +198,7 @@ const ProvidersAdmin: React.FC = () => {
     
     setIsCreating(false);
     setIsModalOpen(true);
+    setApiTestResult(null);
   };
 
   const handleDeleteProvider = async (providerId: string) => {
@@ -259,18 +248,39 @@ const ProvidersAdmin: React.FC = () => {
           toast.error('제공업체 생성에 실패했습니다.');
         }
       } else {
-        // 기존 제공업체 수정
-        const response = await updateProvider(editingProvider.id, {
-          ...editingProvider,
+        // 기존 제공업체 수정 - API 키가 비어있는 경우 제외
+        const updateData: Partial<ProviderInput> = { 
+          id: editingProvider.id,
+          name: editingProvider.name,
+          type: editingProvider.type,
+          endpointUrl: editingProvider.endpointUrl,
+          maxTokens: editingProvider.maxTokens,
+          settings: editingProvider.settings,
           active: editingProvider.active
+        };
+        
+        // API 키가 비어있으면 전송하지 않음
+        if (editingProvider.apiKey && editingProvider.apiKey.trim() !== '') {
+          updateData.apiKey = editingProvider.apiKey;
+          console.log('API 키가 입력되어 업데이트에 포함됩니다. (마스킹됨)');
+        } else {
+          console.log('API 키가 비어있어 업데이트에서 제외합니다.');
+        }
+        
+        console.log('서버로 전송할 최종 데이터:', {
+          ...updateData,
+          apiKey: updateData.apiKey ? '******' : undefined
         });
+        
+        // 제공업체 정보 업데이트
+        const response = await updateProvider(editingProvider.id, updateData);
         
         if (response.success) {
           // 사용자에게 명확한 피드백 제공
           let successMessage = '제공업체가 성공적으로 업데이트되었습니다.';
           
           // API 키 업데이트 확인
-          if (editingProvider.apiKey) {
+          if (editingProvider.apiKey && editingProvider.apiKey.trim() !== '') {
             successMessage += ' API 키가 업데이트되었습니다.';
           }
           
@@ -297,6 +307,45 @@ const ProvidersAdmin: React.FC = () => {
       toast.error('제공업체 저장 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestApiConnection = async () => {
+    if (!editingProvider) return;
+    
+    if (!editingProvider.apiKey.trim()) {
+      toast.error('API 키를 입력해주세요.');
+      return;
+    }
+    
+    try {
+      setIsApiTesting(true);
+      setApiTestResult(null);
+      
+      const { testProviderApi } = await import('../../services/admin');
+      const result = await testProviderApi(editingProvider.id, {
+        type: editingProvider.type,
+        apiKey: editingProvider.apiKey,
+        endpointUrl: editingProvider.endpointUrl
+      });
+      
+      setApiTestResult(result);
+      
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error('API 테스트 중 오류:', error);
+      setApiTestResult({
+        success: false,
+        message: '알 수 없는 오류가 발생했습니다.',
+        error: 'UNKNOWN_ERROR'
+      });
+      toast.error('API 테스트 중 오류가 발생했습니다.');
+    } finally {
+      setIsApiTesting(false);
     }
   };
 
@@ -377,15 +426,6 @@ const ProvidersAdmin: React.FC = () => {
                           <p className="flex items-center text-sm text-gray-500">
                             타입: {provider.type}
                           </p>
-                          <p className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                            이미지 지원: {provider.allowImages ? '예' : '아니오'}
-                          </p>
-                          <p className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                            비디오 지원: {provider.allowVideos ? '예' : '아니오'}
-                          </p>
-                          <p className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                            파일 지원: {provider.allowFiles ? '예' : '아니오'}
-                          </p>
                         </div>
                       </div>
                     </div>
@@ -403,11 +443,11 @@ const ProvidersAdmin: React.FC = () => {
       
       {/* 제공업체 추가/편집 모달 */}
       {isModalOpen && editingProvider && (
-        <div className="fixed z-10 inset-0 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setIsModalOpen(false)}></div>
+        <div className="modal-container">
+          <div className="modal-flex-container">
+            <div className="modal-backdrop" onClick={() => setIsModalOpen(false)}></div>
             
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div className="modal-content">
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                 <div className="sm:flex sm:items-start">
                   <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
@@ -463,6 +503,47 @@ const ProvidersAdmin: React.FC = () => {
                           />
                         </div>
                         
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            onClick={handleTestApiConnection}
+                            disabled={isApiTesting}
+                            className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                          >
+                            {isApiTesting ? (
+                              <>
+                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                API 테스트 중...
+                              </>
+                            ) : "API 연결 테스트"}
+                          </button>
+                        </div>
+                        
+                        {apiTestResult && (
+                          <div className={`mt-2 p-3 rounded-md text-sm ${apiTestResult.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                            <p className="font-medium">{apiTestResult.message}</p>
+                            {apiTestResult.success && apiTestResult.data?.modelsCount && (
+                              <p className="mt-1">사용 가능한 모델: {apiTestResult.data.modelsCount}개</p>
+                            )}
+                            {apiTestResult.success && apiTestResult.data?.models && (
+                              <div className="mt-1">
+                                <p className="font-medium">일부 모델 목록:</p>
+                                <ul className="mt-1 ml-4 list-disc">
+                                  {apiTestResult.data.models.slice(0, 5).map((model: {id: string, name: string}) => (
+                                    <li key={model.id}>{model.name}</li>
+                                  ))}
+                                  {apiTestResult.data.models.length > 5 && (
+                                    <li>... 외 {apiTestResult.data.models.length - 5}개</li>
+                                  )}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
                         <div>
                           <label htmlFor="maxTokens" className="block text-sm font-medium text-gray-700">최대 토큰 (0은 무제한)</label>
                           <input
@@ -475,54 +556,6 @@ const ProvidersAdmin: React.FC = () => {
                         </div>
                         
                         <div className="mt-4 space-y-4">
-                          <div className="flex items-start">
-                            <div className="flex items-center h-5">
-                              <input
-                                id="allowImages"
-                                type="checkbox"
-                                checked={editingProvider.allowImages}
-                                onChange={(e) => setEditingProvider({ ...editingProvider, allowImages: e.target.checked })}
-                                className="focus:ring-primary-500 h-4 w-4 text-primary-600 border-gray-300 rounded"
-                              />
-                            </div>
-                            <div className="ml-3 text-sm">
-                              <label htmlFor="allowImages" className="font-medium text-gray-700">이미지 지원</label>
-                              <p className="text-gray-500">이 제공업체가 이미지 처리를 지원하는지 설정합니다.</p>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-start">
-                            <div className="flex items-center h-5">
-                              <input
-                                id="allowVideos"
-                                type="checkbox"
-                                checked={editingProvider.allowVideos}
-                                onChange={(e) => setEditingProvider({ ...editingProvider, allowVideos: e.target.checked })}
-                                className="focus:ring-primary-500 h-4 w-4 text-primary-600 border-gray-300 rounded"
-                              />
-                            </div>
-                            <div className="ml-3 text-sm">
-                              <label htmlFor="allowVideos" className="font-medium text-gray-700">비디오 지원</label>
-                              <p className="text-gray-500">이 제공업체가 비디오 처리를 지원하는지 설정합니다.</p>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-start">
-                            <div className="flex items-center h-5">
-                              <input
-                                id="allowFiles"
-                                type="checkbox"
-                                checked={editingProvider.allowFiles}
-                                onChange={(e) => setEditingProvider({ ...editingProvider, allowFiles: e.target.checked })}
-                                className="focus:ring-primary-500 h-4 w-4 text-primary-600 border-gray-300 rounded"
-                              />
-                            </div>
-                            <div className="ml-3 text-sm">
-                              <label htmlFor="allowFiles" className="font-medium text-gray-700">파일 지원</label>
-                              <p className="text-gray-500">이 제공업체가 파일 처리를 지원하는지 설정합니다.</p>
-                            </div>
-                          </div>
-                          
                           <div className="flex items-start">
                             <div className="flex items-center h-5">
                               <input
@@ -554,7 +587,10 @@ const ProvidersAdmin: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setApiTestResult(null);
+                  }}
                   className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                 >
                   취소

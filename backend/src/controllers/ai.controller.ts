@@ -49,7 +49,8 @@ export const getModels = async (req: Request, res: Response, next: NextFunction)
 export const chatCompletion = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { providerId } = req.params;
-    const { model, messages } = req.body;
+    const { model, messages, userApiKeyId, temperature, maxTokens } = req.body;
+    const userId = req.user?.id;
 
     // 요청 유효성 검사
     if (!model) {
@@ -64,9 +65,18 @@ export const chatCompletion = async (req: Request, res: Response, next: NextFunc
     const files = req.uploadedFiles || [];
     logger.info(`채팅 요청에 ${files.length}개의 파일이 첨부되었습니다.`);
 
-    // TODO: 실제 AI 서비스에 요청 전송
+    // AI 서비스 호출
+    const response = await aiService.chat({
+      userId: userId as number,
+      providerId,
+      model,
+      messages,
+      temperature: temperature !== undefined ? parseFloat(temperature) : undefined,
+      maxTokens: maxTokens !== undefined ? parseInt(maxTokens) : undefined,
+      files,
+      userApiKeyId
+    });
 
-    // 임시 응답
     res.status(200).json({
       success: true,
       data: {
@@ -74,18 +84,16 @@ export const chatCompletion = async (req: Request, res: Response, next: NextFunc
         providerId,
         model,
         response: {
-          content: '이것은 AI 응답의 예시입니다. 실제 구현에서는 AI 제공자의 API를 통해 응답을 받아야 합니다.',
-          role: 'assistant',
+          content: response.message.content,
+          role: response.message.role,
         },
-        usage: {
-          promptTokens: 100,
-          completionTokens: 50,
-          totalTokens: 150,
-        },
+        usage: response.usage,
+        userApiKeyId: userApiKeyId, // 사용한 API 키 ID 반환
       },
     });
-  } catch (error) {
-    next(error);
+  } catch (error: any) {
+    logger.error('AI 요청 오류:', error);
+    next(new ApiError(error.status || 500, error.message || 'AI 요청을 처리하는 중 오류가 발생했습니다.'));
   }
 };
 
@@ -95,7 +103,8 @@ export const chatCompletion = async (req: Request, res: Response, next: NextFunc
 export const textCompletion = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { providerId } = req.params;
-    const { model, prompt } = req.body;
+    const { model, prompt, userApiKeyId, temperature, maxTokens } = req.body;
+    const userId = req.user?.id;
 
     // 요청 유효성 검사
     if (!model) {
@@ -106,24 +115,30 @@ export const textCompletion = async (req: Request, res: Response, next: NextFunc
       throw ApiError.badRequest('유효한 프롬프트가 필요합니다.');
     }
 
-    // TODO: 실제 AI 서비스에 요청 전송
+    // AI 서비스 호출
+    const response = await aiService.completion({
+      userId: userId as number,
+      providerId,
+      model,
+      prompt,
+      temperature,
+      maxTokens,
+      userApiKeyId
+    });
 
-    // 임시 응답
     res.status(200).json({
       success: true,
       data: {
         id: `completion-${Date.now()}`,
         providerId,
         model,
-        response: '이것은 텍스트 완성 API의 예시 응답입니다. 실제 구현에서는 AI 제공자의 API를 통해 응답을 받아야 합니다.',
-        usage: {
-          promptTokens: 50,
-          completionTokens: 30,
-          totalTokens: 80,
-        },
+        response: response.text,
+        usage: response.usage,
+        userApiKeyId: userApiKeyId, // 사용한 API 키 ID 반환
       },
     });
-  } catch (error) {
-    next(error);
+  } catch (error: any) {
+    logger.error('AI 요청 오류:', error);
+    next(new ApiError(error.status || 500, error.message || 'AI 요청을 처리하는 중 오류가 발생했습니다.'));
   }
 }; 

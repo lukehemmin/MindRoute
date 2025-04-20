@@ -8,9 +8,6 @@ export interface Provider {
   type: string;
   description: string;
   available: boolean; // 백엔드의 active 필드와 매핑됨
-  allowImages: boolean;
-  allowVideos: boolean;
-  allowFiles: boolean;
   models?: Model[];
   apiEndpoint?: string;
 }
@@ -43,6 +40,7 @@ export interface ChatRequest {
   messages: Message[];
   temperature?: number;
   maxTokens?: number;
+  userApiKeyId?: string; // 사용자가 선택한 API 키 ID
 }
 
 // 채팅 응답 인터페이스
@@ -127,12 +125,14 @@ export const getModels = async (providerId: string): Promise<AIResponse> => {
 export const sendTextRequest = async (
   providerId: string, 
   modelId: string, 
-  prompt: string
+  prompt: string,
+  userApiKeyId?: string
 ): Promise<AIResponse> => {
   try {
     const response = await api.post(`/api/ai/providers/${providerId}/completion`, {
       model: modelId,
-      prompt
+      prompt,
+      userApiKeyId
     });
     return {
       success: true,
@@ -153,13 +153,17 @@ export const sendImageRequest = async (
   providerId: string,
   modelId: string,
   prompt: string,
-  image: File
+  image: File,
+  userApiKeyId?: string
 ): Promise<AIResponse> => {
   try {
     const formData = new FormData();
     formData.append('model', modelId);
     formData.append('prompt', prompt);
     formData.append('image', image);
+    if (userApiKeyId) {
+      formData.append('userApiKeyId', userApiKeyId);
+    }
 
     const response = await api.post(`/api/ai/providers/${providerId}/chat`, formData, {
       headers: {
@@ -185,13 +189,17 @@ export const sendFileRequest = async (
   providerId: string,
   modelId: string,
   prompt: string,
-  file: File
+  file: File,
+  userApiKeyId?: string
 ): Promise<AIResponse> => {
   try {
     const formData = new FormData();
     formData.append('model', modelId);
     formData.append('prompt', prompt);
     formData.append('file', file);
+    if (userApiKeyId) {
+      formData.append('userApiKeyId', userApiKeyId);
+    }
 
     const response = await api.post(`/api/ai/providers/${providerId}/chat`, formData, {
       headers: {
@@ -213,7 +221,7 @@ export const sendFileRequest = async (
 };
 
 // 채팅 완성 요청
-export const chatCompletion = async (providerId: string, data: ChatRequest, files?: File[]) => {
+export const chatCompletion = async (providerId: string, data: ChatRequest, files?: File[]): Promise<ChatResponse | AIResponse> => {
   try {
     // 파일이 있는 경우 FormData 사용
     if (files && files.length > 0) {
@@ -227,6 +235,11 @@ export const chatCompletion = async (providerId: string, data: ChatRequest, file
       
       if (data.maxTokens) {
         formData.append('maxTokens', data.maxTokens.toString());
+      }
+      
+      // API 키 ID 추가
+      if (data.userApiKeyId) {
+        formData.append('userApiKeyId', data.userApiKeyId);
       }
       
       // 파일 추가
@@ -255,16 +268,26 @@ export const chatCompletion = async (providerId: string, data: ChatRequest, file
       success: false,
       message: error.response?.data?.message || '채팅 요청을 처리하는데 실패했습니다.',
       data: null
-    };
+    } as AIResponse;
   }
 };
 
 // 텍스트 완성 요청
-export const textCompletion = async (providerId: string, model: string, prompt: string, options?: { temperature?: number, maxTokens?: number }) => {
+export const textCompletion = async (
+  providerId: string, 
+  model: string, 
+  prompt: string, 
+  options?: { 
+    temperature?: number, 
+    maxTokens?: number,
+    userApiKeyId?: string 
+  }
+) => {
   try {
     const response = await api.post<{ success: boolean, data: any }>(`/api/ai/providers/${providerId}/completion`, {
       model,
       prompt,
+      userApiKeyId: options?.userApiKeyId,
       ...options
     });
     return response.data;

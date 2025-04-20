@@ -16,6 +16,19 @@ export interface AiModelAttributes {
   inputPrice: number | null;
   outputPrice: number | null;
   active: boolean;
+  /**
+   * 모델의 설정 값을 저장하는 JSON 필드
+   * 
+   * 사용 가능한 설정:
+   * - temperature: number - 생성 다양성 조절 (기본값: 0.7)
+   * - topP: number - 토큰 샘플링 확률 (기본값: 1)
+   * - frequencyPenalty: number - 반복 패널티 (기본값: 0)
+   * - presencePenalty: number - 주제 패널티 (기본값: 0)
+   * - stopSequences: string[] - 생성 중단 시퀀스
+   * - seed: number - 랜덤 시드 값
+   * - responseFormat: string - 응답 포맷 (json, text 등)
+   * - systemPrompt: string - 기본 시스템 프롬프트
+   */
   settings: Record<string, any>;
   createdAt?: Date;
   updatedAt?: Date;
@@ -58,6 +71,7 @@ AiModel.init(
     providerId: {
       type: DataTypes.UUID,
       allowNull: false,
+      field: 'providerid',
       references: {
         model: 'providers',
         key: 'id',
@@ -70,37 +84,45 @@ AiModel.init(
     modelId: {
       type: DataTypes.STRING,
       allowNull: false,
+      field: 'modelid',
     },
     allowImages: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+      field: 'allowimages',
     },
     allowVideos: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+      field: 'allowvideos',
     },
     allowFiles: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+      field: 'allowfiles',
     },
     maxTokens: {
       type: DataTypes.INTEGER,
       allowNull: true,
+      field: 'maxtokens',
     },
     contextWindow: {
       type: DataTypes.INTEGER,
       allowNull: true,
+      field: 'contextwindow',
     },
     inputPrice: {
       type: DataTypes.DECIMAL(10, 6),
       allowNull: true,
+      field: 'inputprice',
     },
     outputPrice: {
       type: DataTypes.DECIMAL(10, 6),
       allowNull: true,
+      field: 'outputprice',
     },
     active: {
       type: DataTypes.BOOLEAN,
@@ -110,13 +132,19 @@ AiModel.init(
     settings: {
       type: DataTypes.JSONB,
       allowNull: false,
-      defaultValue: {},
+      defaultValue: {
+        temperature: 0.7,
+        topP: 1.0,
+        frequencyPenalty: 0,
+        presencePenalty: 0
+      },
     },
   },
   {
     sequelize,
     tableName: 'ai_models',
     timestamps: true,
+    underscored: true,
     indexes: [
       {
         fields: ['providerId'],

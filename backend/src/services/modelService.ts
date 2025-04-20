@@ -17,7 +17,17 @@ export interface CreateModelDto {
   contextWindow?: number;
   inputPrice?: number;
   outputPrice?: number;
-  settings?: Record<string, any>;
+  settings?: {
+    temperature?: number;
+    topP?: number;
+    frequencyPenalty?: number;
+    presencePenalty?: number;
+    systemPrompt?: string;
+    stopSequences?: string[];
+    seed?: number;
+    responseFormat?: string;
+    [key: string]: any;
+  };
   active: boolean;
 }
 
@@ -34,7 +44,17 @@ export interface UpdateModelDto {
   contextWindow?: number;
   inputPrice?: number;
   outputPrice?: number;
-  settings?: Record<string, any>;
+  settings?: {
+    temperature?: number;
+    topP?: number;
+    frequencyPenalty?: number;
+    presencePenalty?: number;
+    systemPrompt?: string;
+    stopSequences?: string[];
+    seed?: number;
+    responseFormat?: string;
+    [key: string]: any;
+  };
   active?: boolean;
 }
 
@@ -131,10 +151,22 @@ class ModelService {
         throw new ApiError(400, '이미 같은 제공업체에 동일한 모델 ID가 존재합니다.');
       }
 
+      // 기본 설정 합치기
+      const defaultSettings = {
+        temperature: 0.7,
+        topP: 1.0,
+        frequencyPenalty: 0,
+        presencePenalty: 0,
+        systemPrompt: ''
+      };
+
       // 모델 생성
       const model = await AiModel.create({
         ...modelData,
-        settings: modelData.settings || {}
+        settings: {
+          ...defaultSettings,
+          ...modelData.settings
+        }
       });
 
       logger.info(`새 AI 모델이 생성되었습니다: ${model.name} (${model.modelId})`);
@@ -154,6 +186,14 @@ class ModelService {
       const model = await AiModel.findByPk(modelId);
       if (!model) {
         throw new ApiError(404, '모델을 찾을 수 없습니다.');
+      }
+
+      // 설정 업데이트 처리
+      if (updateData.settings) {
+        updateData.settings = {
+          ...model.settings,
+          ...updateData.settings
+        };
       }
 
       // 모델 업데이트

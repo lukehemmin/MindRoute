@@ -39,13 +39,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
         
-        <main className="flex-1 overflow-y-auto pt-20 pb-6 px-4">
+        <main className="flex-1 flex flex-col pt-20">
           {children}
         </main>
       </div>

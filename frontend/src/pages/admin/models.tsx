@@ -10,7 +10,8 @@ import {
   createModel, 
   updateModel, 
   deleteModel,
-  refreshProviderModels
+  refreshProviderModels,
+  refreshAllProviderModels
 } from '../../services/api';
 import { getAllProviders } from '../../services/admin';
 import { AIModel, Provider } from '../../types/provider';
@@ -326,45 +327,33 @@ const ModelsAdmin = () => {
   const handleRefreshAllModels = async () => {
     try {
       setLoading(true);
-      // 활성화된 모든 제공업체에 대해 새로고침 수행
-      const activeProviders = providers.filter(provider => provider.available);
+      console.log('모든 제공업체 모델 새로고침 시작');
       
-      if (activeProviders.length === 0) {
-        toast.error('활성화된 제공업체가 없습니다.');
-        setLoading(false);
-        return;
-      }
+      const response = await refreshAllProviderModels();
       
-      console.log('활성화된 제공업체:', activeProviders);
-      let successCount = 0;
-      let errorMessages: string[] = [];
-      
-      for (const provider of activeProviders) {
-        try {
-          console.log(`${provider.name} 제공업체 모델 새로고침 시도...`);
-          const response = await refreshProviderModels(provider.id);
-          
-          if (response.success) {
-            successCount++;
-            console.log(`${provider.name} 제공업체 모델 새로고침 성공`);
-          } else {
-            console.error(`${provider.name} 제공업체 모델 새로고침 실패:`, response.message);
-            errorMessages.push(`${provider.name}: ${response.message || '알 수 없는 오류'}`);
-          }
-        } catch (err: any) {
-          console.error(`${provider.name} 모델 새로고침 오류:`, err);
-          errorMessages.push(`${provider.name}: ${err.message || '알 수 없는 오류'}`);
+      if (response.success) {
+        // 응답 데이터 로깅
+        console.log('새로고침 성공:', response);
+        
+        // 성공 메시지 표시
+        toast.success(response.message);
+        
+        // 모델 목록 새로고침
+        fetchModels();
+        
+        // 상세 정보 로깅
+        if (response.data?.providerResults) {
+          response.data.providerResults.forEach((result: any) => {
+            if (result.success) {
+              console.log(`${result.providerName}: ${result.newModelsCount}개의 새 모델 추가됨`);
+            } else {
+              console.error(`${result.providerName} 오류: ${result.error}`);
+            }
+          });
         }
-      }
-      
-      if (successCount > 0) {
-        toast.success(`${successCount}개 제공업체의 모델 목록이 새로고침되었습니다.`);
-        fetchModels(); // 전체 모델 목록 다시 로드
       } else {
-        toast.error('모든 제공업체 모델 새로고침에 실패했습니다.');
-        if (errorMessages.length > 0) {
-          console.error('오류 메시지:', errorMessages);
-        }
+        console.error('새로고침 실패:', response.message);
+        toast.error(response.message || '모델 새로고침에 실패했습니다.');
       }
     } catch (err) {
       console.error('모든 모델 새로고침 오류:', err);
@@ -475,7 +464,7 @@ const ModelsAdmin = () => {
         ) : selectedProviderId ? (
           // 선택된 제공업체의 모델 목록
           <div className="bg-white shadow-md rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200 table-fixed">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">이름</th>
@@ -484,7 +473,7 @@ const ModelsAdmin = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">기능</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">가격</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">작업</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-20">작업</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -497,30 +486,30 @@ const ModelsAdmin = () => {
                 ) : (
                   models.map(model => (
                     <tr key={model.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">{model.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{model.modelId}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{model.contextWindow?.toLocaleString() || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 truncate max-w-[150px]" title={model.name}>{model.name}</td>
+                      <td className="px-6 py-4 truncate max-w-[150px]" title={model.modelId}>{model.modelId}</td>
+                      <td className="px-6 py-4 truncate max-w-[100px]">{model.contextWindow?.toLocaleString() || '-'}</td>
+                      <td className="px-6 py-4 truncate max-w-[150px]">
                         {[
                           model.allowImages && '이미지',
                           model.allowVideos && '비디오',
                           model.allowFiles && '파일'
                         ].filter(Boolean).join(', ') || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 truncate max-w-[200px]">
                         {model.inputPrice ? `입력: $${model.inputPrice}/1K` : ''}
                         {model.inputPrice && model.outputPrice ? ', ' : ''}
                         {model.outputPrice ? `출력: $${model.outputPrice}/1K` : ''}
                         {!model.inputPrice && !model.outputPrice && '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 truncate max-w-[80px]">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           model.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                         }`}>
                           {model.active ? '활성' : '비활성'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap w-20">
                         <button
                           className="text-blue-600 hover:text-blue-900 mr-3"
                           onClick={() => handleEditModel(model)}
@@ -556,7 +545,7 @@ const ModelsAdmin = () => {
               </div>
               
               <div className="bg-white shadow-md rounded-lg overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="min-w-full divide-y divide-gray-200 table-fixed">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">이름</th>
@@ -565,7 +554,7 @@ const ModelsAdmin = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">기능</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">가격</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">작업</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-20">작업</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -578,30 +567,30 @@ const ModelsAdmin = () => {
                     ) : (
                       models.map(model => (
                         <tr key={model.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">{model.name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{model.modelId}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{model.contextWindow?.toLocaleString() || '-'}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-6 py-4 truncate max-w-[150px]" title={model.name}>{model.name}</td>
+                          <td className="px-6 py-4 truncate max-w-[150px]" title={model.modelId}>{model.modelId}</td>
+                          <td className="px-6 py-4 truncate max-w-[100px]">{model.contextWindow?.toLocaleString() || '-'}</td>
+                          <td className="px-6 py-4 truncate max-w-[150px]">
                             {[
                               model.allowImages && '이미지',
                               model.allowVideos && '비디오',
                               model.allowFiles && '파일'
                             ].filter(Boolean).join(', ') || '-'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-6 py-4 truncate max-w-[200px]">
                             {model.inputPrice ? `입력: $${model.inputPrice}/1K` : ''}
                             {model.inputPrice && model.outputPrice ? ', ' : ''}
                             {model.outputPrice ? `출력: $${model.outputPrice}/1K` : ''}
                             {!model.inputPrice && !model.outputPrice && '-'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-6 py-4 truncate max-w-[80px]">
                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                               model.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                             }`}>
                               {model.active ? '활성' : '비활성'}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap w-20">
                             <button
                               className="text-blue-600 hover:text-blue-900 mr-3"
                               onClick={() => handleEditModel(model)}
@@ -627,11 +616,11 @@ const ModelsAdmin = () => {
 
         {/* 모델 생성/수정 모달 */}
         {isModalOpen && (
-          <div className="fixed z-10 inset-0 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setIsModalOpen(false)}></div>
+          <div className="modal-container">
+            <div className="modal-flex-container">
+              <div className="modal-backdrop" onClick={() => setIsModalOpen(false)}></div>
               
-              <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full">
+              <div className="modal-content">
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                   <div className="sm:flex sm:items-start">
                     <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
