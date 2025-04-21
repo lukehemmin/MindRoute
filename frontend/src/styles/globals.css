@@ -39,16 +39,18 @@
   
   /* 모달 관련 스타일 */
   .modal-content {
-    @apply inline-block align-middle bg-white rounded-lg text-left overflow-y-auto shadow-xl transform transition-all;
+    @apply inline-block align-middle bg-white rounded-lg text-left shadow-xl transform transition-all;
     max-height: 80vh;
     max-width: 85vw;
     width: auto;
     margin: 0 auto;
+    overflow-y: auto;
   }
   
   /* 모달 컨테이너 스타일 */
   .modal-container {
-    @apply fixed z-10 inset-0 overflow-y-auto;
+    @apply fixed z-10 inset-0;
+    overflow-y: auto !important;
   }
   
   .modal-flex-container {

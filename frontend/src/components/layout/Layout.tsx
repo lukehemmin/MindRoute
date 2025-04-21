@@ -45,7 +45,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
         
-        <main className="flex-1 flex flex-col pt-20">
+        <main className="flex-1 overflow-auto pt-20">
           {children}
         </main>
       </div>

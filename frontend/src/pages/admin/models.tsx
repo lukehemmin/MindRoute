@@ -620,7 +620,7 @@ const ModelsAdmin = () => {
             <div className="modal-flex-container">
               <div className="modal-backdrop" onClick={() => setIsModalOpen(false)}></div>
               
-              <div className="modal-content">
+              <div className="modal-content overflow-y-auto max-h-[80vh]">
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                   <div className="sm:flex sm:items-start">
                     <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
