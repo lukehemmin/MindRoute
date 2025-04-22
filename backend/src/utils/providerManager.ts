@@ -56,6 +56,7 @@ export interface IChatRequest {
   temperature?: number;
   maxTokens?: number;
   files?: IFile[];
+  streaming?: boolean;
 }
 
 // 채팅 응답 인터페이스

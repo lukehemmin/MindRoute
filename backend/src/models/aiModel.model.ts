@@ -28,6 +28,7 @@ export interface AiModelAttributes {
    * - seed: number - 랜덤 시드 값
    * - responseFormat: string - 응답 포맷 (json, text 등)
    * - systemPrompt: string - 기본 시스템 프롬프트
+   * - streaming: boolean - 스트리밍 응답 활성화 (기본값: true)
    */
   settings: Record<string, any>;
   createdAt?: Date;

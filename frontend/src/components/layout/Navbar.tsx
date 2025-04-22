@@ -101,6 +101,12 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, isSidebarOpen }) => {
       current: isActive('/admin/logs'),
     },
     {
+      name: 'API 로그 관리',
+      icon: <FiActivity className="mr-2 h-5 w-5" />,
+      href: '/admin/api-logs',
+      current: isActive('/admin/api-logs'),
+    },
+    {
       name: '문의 관리',
       icon: <FiMessageSquare className="mr-2 h-5 w-5" />,
       href: '/admin/tickets',

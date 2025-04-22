@@ -2,22 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/layout/Layout';
 import useAuthStore from '../../utils/authStore';
-import { getLogs } from '../../services/admin';
-import { Log, PaginationResponse } from '../../services/admin';
+import { ApiLog, ApiLogFilters, getApiLogs } from '../../services/admin';
 
-const LogsAdmin: React.FC = () => {
+const ApiLogsAdmin: React.FC = () => {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
-  const [logs, setLogs] = useState<Log[]>([]);
+  const [logs, setLogs] = useState<ApiLog[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   
   // 필터 상태
-  const [userId, setUserId] = useState<string>('');
-  const [providerId, setProviderId] = useState<string>('');
-  const [status, setStatus] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [apiKeyId, setApiKeyId] = useState<string>('');
+  const [model, setModel] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
@@ -41,24 +40,24 @@ const LogsAdmin: React.FC = () => {
       setLoading(true);
       
       // 필터 구성
-      const filters: Record<string, string> = {};
-      if (userId) filters.userId = userId;
-      if (providerId) filters.providerId = providerId;
-      if (status) filters.status = status;
+      const filters: ApiLogFilters = {};
+      if (email) filters.email = email;
+      if (apiKeyId) filters.apiKeyId = apiKeyId;
+      if (model) filters.model = model;
       if (startDate) filters.startDate = startDate;
       if (endDate) filters.endDate = endDate;
       
-      const response = await getLogs(currentPage, 20, filters);
+      const response = await getApiLogs(currentPage, 10, filters);
       
       if (response.success) {
         setLogs(response.data.logs);
         setTotalPages(response.data.pagination.totalPages);
       } else {
-        setError('로그 목록을 가져오는데 실패했습니다.');
+        setError('API 로그 목록을 가져오는데 실패했습니다.');
       }
     } catch (err) {
-      console.error('로그 목록 조회 오류:', err);
-      setError('로그 목록을 가져오는 중 오류가 발생했습니다.');
+      console.error('API 로그 목록 조회 오류:', err);
+      setError('API 로그 목록을 가져오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -71,13 +70,25 @@ const LogsAdmin: React.FC = () => {
   };
 
   const handleResetFilter = () => {
-    setUserId('');
-    setProviderId('');
-    setStatus('');
+    setEmail('');
+    setApiKeyId('');
+    setModel('');
     setStartDate('');
     setEndDate('');
     setCurrentPage(1);
     fetchLogs();
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).format(date);
   };
 
   const renderPagination = () => {
@@ -161,8 +172,8 @@ const LogsAdmin: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900">로그 관리</h1>
-              <p className="mt-1 text-sm text-gray-500">API 호출 로그를 조회하고 관리합니다.</p>
+              <h1 className="text-2xl font-semibold text-gray-900">API 로그 관리</h1>
+              <p className="mt-1 text-sm text-gray-500">사용자 API 요청 로그를 조회하고 관리합니다.</p>
             </div>
             <button
               onClick={() => router.push('/admin')}
@@ -184,44 +195,41 @@ const LogsAdmin: React.FC = () => {
             <form onSubmit={handleFilter}>
               <div className="grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-6">
                 <div className="sm:col-span-3">
-                  <label htmlFor="userId" className="block text-sm font-medium text-gray-700">사용자 ID</label>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">사용자 이메일</label>
                   <div className="mt-1">
                     <input
                       type="text"
-                      id="userId"
-                      value={userId}
-                      onChange={(e) => setUserId(e.target.value)}
+                      id="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md"
                     />
                   </div>
                 </div>
                 
                 <div className="sm:col-span-3">
-                  <label htmlFor="providerId" className="block text-sm font-medium text-gray-700">제공업체 ID</label>
+                  <label htmlFor="apiKeyId" className="block text-sm font-medium text-gray-700">API 키 ID</label>
                   <div className="mt-1">
                     <input
                       type="text"
-                      id="providerId"
-                      value={providerId}
-                      onChange={(e) => setProviderId(e.target.value)}
+                      id="apiKeyId"
+                      value={apiKeyId}
+                      onChange={(e) => setApiKeyId(e.target.value)}
                       className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md"
                     />
                   </div>
                 </div>
                 
                 <div className="sm:col-span-2">
-                  <label htmlFor="status" className="block text-sm font-medium text-gray-700">상태</label>
+                  <label htmlFor="model" className="block text-sm font-medium text-gray-700">모델</label>
                   <div className="mt-1">
-                    <select
-                      id="status"
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value)}
+                    <input
+                      type="text"
+                      id="model"
+                      value={model}
+                      onChange={(e) => setModel(e.target.value)}
                       className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                    >
-                      <option value="">전체</option>
-                      <option value="success">성공</option>
-                      <option value="error">오류</option>
-                    </select>
+                    />
                   </div>
                 </div>
                 
@@ -256,84 +264,90 @@ const LogsAdmin: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleResetFilter}
-                  className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                 >
-                  초기화
+                  필터 초기화
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
                 >
-                  필터 적용
+                  적용
                 </button>
               </div>
             </form>
           </div>
           
-          {/* 로그 목록 테이블 */}
+          {/* 로그 목록 */}
           <div className="mt-6 bg-white shadow overflow-hidden sm:rounded-md">
             {loading ? (
-              <div className="py-12 flex justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+              <div className="p-6 text-center">
+                <p className="text-gray-500">로딩 중...</p>
               </div>
-            ) : logs.length > 0 ? (
+            ) : logs.length === 0 ? (
+              <div className="p-6 text-center">
+                <p className="text-gray-500">표시할 API 로그가 없습니다.</p>
+              </div>
+            ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">타입</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">사용자</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">제공업체</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">토큰</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">시간</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">생성일</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        사용자
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        API 키
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        모델
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        토큰
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        일시
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        자세히
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {logs.map((log) => (
                       <tr key={log.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {log.id.substring(0, 8)}...
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{log.requestType}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{log.user?.name || log.userId}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{log.provider?.name || log.providerId}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            log.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {log.status}
-                          </span>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {log.email || '미인증 사용자'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {log.totalTokens || '-'}
+                          {log.apiKeyName ? `${log.apiKeyName} (${log.apiKey?.substring(0, 8)}...)` : '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {log.executionTime ? `${log.executionTime}ms` : '-'}
+                          {log.model || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(log.createdAt).toLocaleString()}
+                          {log.totalTokens ? `${log.totalTokens.toLocaleString()} (P: ${log.promptTokens}, C: ${log.completionTokens})` : '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(log.createdAt)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => router.push(`/admin/api-logs/${log.id}`)}
+                            className="text-primary-600 hover:text-primary-900"
+                          >
+                            상세 보기
+                          </button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                
-                {renderPagination()}
-              </div>
-            ) : (
-              <div className="py-12 text-center text-gray-500">
-                로그 데이터가 없습니다.
               </div>
             )}
+            
+            {/* 페이지네이션 */}
+            {renderPagination()}
           </div>
         </div>
       </div>
@@ -341,4 +355,4 @@ const LogsAdmin: React.FC = () => {
   );
 };
 
-export default LogsAdmin; 
+export default ApiLogsAdmin; 

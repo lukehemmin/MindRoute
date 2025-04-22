@@ -20,6 +20,7 @@ interface ChatOptions {
   maxTokens?: number;
   files?: any[];
   userApiKeyId?: string;
+  streaming?: boolean;
 }
 
 interface CompletionOptions {
@@ -115,9 +116,19 @@ class AIService {
       }
       
       // 모델 정보 가져오기
-      const aiModel = await AiModel.findOne({
-        where: { providerId, modelId: model }
+      let aiModel;
+      
+      // 먼저 id로 조회 시도
+      aiModel = await AiModel.findOne({
+        where: { providerId, id: model }
       });
+      
+      // id로 찾지 못한 경우 modelId로 조회 시도 (하위 호환성 유지)
+      if (!aiModel) {
+        aiModel = await AiModel.findOne({
+          where: { providerId, modelId: model }
+        });
+      }
       
       if (!aiModel) {
         throw new Error(`모델을 찾을 수 없습니다: ${model}`);
@@ -177,14 +188,15 @@ class AIService {
       // 프로바이더에 요청
       const chatRequest: IChatRequest = {
         messages: updatedMessages,
-        model,
+        model: aiModel.modelId,
         temperature: temperature ?? aiModel.settings?.temperature ?? 0.7,
         maxTokens: maxTokens ?? aiModel.maxTokens ?? undefined,
         files: processedFiles,
+        streaming: options.streaming !== undefined ? options.streaming : aiModel.settings?.streaming ?? true
       };
       
       // 로깅
-      logger.info(`채팅 요청: ${model} 모델, ${updatedMessages.length}개 메시지, ${temperature ? temperature : '기본'} 온도, ${maxTokens || '기본'} 토큰 제한`);
+      logger.info(`채팅 요청: ${model} 모델, ${updatedMessages.length}개 메시지, ${temperature ? temperature : '기본'} 온도, ${maxTokens || '기본'} 토큰 제한, 스트리밍=${chatRequest.streaming ? '활성화' : '비활성화'}`);
       
       // 채팅 요청 실행
       const response = await provider.chat(chatRequest);
@@ -271,9 +283,19 @@ class AIService {
       }
       
       // 모델 정보 가져오기
-      const aiModel = await AiModel.findOne({
-        where: { providerId, modelId: model }
+      let aiModel;
+      
+      // 먼저 id로 조회 시도
+      aiModel = await AiModel.findOne({
+        where: { providerId, id: model }
       });
+      
+      // id로 찾지 못한 경우 modelId로 조회 시도 (하위 호환성 유지)
+      if (!aiModel) {
+        aiModel = await AiModel.findOne({
+          where: { providerId, modelId: model }
+        });
+      }
       
       if (!aiModel) {
         throw new Error(`모델을 찾을 수 없습니다: ${model}`);
@@ -296,7 +318,7 @@ class AIService {
       // 프로바이더에 요청
       const completionRequest: ICompletionRequest = {
         prompt,
-        model,
+        model: aiModel.modelId,
         temperature,
         maxTokens,
       };

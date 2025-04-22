@@ -44,6 +44,7 @@ const Playground: React.FC = () => {
   const [showAdvancedSettings, setShowAdvancedSettings] = useState<boolean>(false);
   const [temperature, setTemperature] = useState<number>(0.7);
   const [maxTokens, setMaxTokens] = useState<number | null>(null);
+  const [streaming, setStreaming] = useState<boolean>(true);
   
   // 채팅 메시지 관련 상태
   const [messages, setMessages] = useState<Message[]>([]);
@@ -134,7 +135,7 @@ const Playground: React.FC = () => {
     try {
       setLoading(true);
       
-      // 모델 목록 가져오기
+      // 모델 목록 가져오기 - 내부적으로 캐싱 적용됨
       const result = await getModels(providerId);
       
       if (result.success) {
@@ -144,10 +145,9 @@ const Playground: React.FC = () => {
           setSelectedModel(firstModel.id);
           
           // 모델의 capabilities 배열에서 지원 기능 확인
-          // 백엔드에서 모델 정보의 allowImages, allowVideos, allowFiles를 capabilities 배열로 변환하도록 해야 함
-          // 임시로 모든 모델이 이미지와 파일을 지원한다고 가정
-          setSupportsImages(true);
-          setSupportsFiles(true);
+          const modelCapabilities = firstModel.capabilities || [];
+          setSupportsImages(modelCapabilities.includes('images'));
+          setSupportsFiles(modelCapabilities.includes('files'));
         } else {
           setError('사용 가능한 모델이 없습니다. 다른 제공업체를 선택해주세요.');
         }
@@ -182,10 +182,9 @@ const Playground: React.FC = () => {
     // 선택된 모델이 바뀔 때 해당 모델의 capabilities 확인
     const selectedModelInfo = models.find(m => m.id === modelId);
     if (selectedModelInfo) {
-      // 백엔드에서 capabilities를 확인하도록 수정되어야 함
-      // 임시로 모든 모델이 이미지와 파일을 지원한다고 가정
-      setSupportsImages(true);
-      setSupportsFiles(true);
+      const modelCapabilities = selectedModelInfo.capabilities || [];
+      setSupportsImages(modelCapabilities.includes('images'));
+      setSupportsFiles(modelCapabilities.includes('files'));
     }
   };
 
@@ -321,7 +320,8 @@ const Playground: React.FC = () => {
             messages: allMessages,
             temperature: temperature,
             maxTokens: maxTokens || undefined,
-            userApiKeyId: selectedApiKey
+            userApiKeyId: selectedApiKey,
+            streaming: streaming
           }
         );
       }
@@ -650,6 +650,26 @@ const Playground: React.FC = () => {
                       />
                       <p className="text-xs text-gray-500 mt-1">
                         생성할 최대 토큰 수를 제한합니다. 비워두면 모델 기본값이 사용됩니다.
+                      </p>
+                    </div>
+                    
+                    <div className="mt-3">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="streaming"
+                          name="streaming"
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                          checked={streaming}
+                          onChange={(e) => setStreaming(e.target.checked)}
+                          disabled={loading}
+                        />
+                        <label htmlFor="streaming" className="ml-2 block text-sm font-medium text-gray-700">
+                          스트리밍 응답
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1 ml-6">
+                        활성화하면 AI 응답이 점진적으로 표시됩니다.
                       </p>
                     </div>
                   </div>

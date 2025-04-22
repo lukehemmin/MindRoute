@@ -22,6 +22,10 @@ import {
   refreshAllProviderModels,
   debugProviderApiKey,
 } from '../controllers/admin.controller';
+import {
+  getApiLogs,
+  getApiLogById
+} from '../controllers/admin/apiLog.controller';
 
 const router = Router();
 
@@ -41,7 +45,7 @@ router.get('/providers', getAllProviders);
 router.post('/providers', createProvider);
 router.put('/providers/:providerId', updateProvider);
 router.delete('/providers/:providerId', deleteProvider);
-router.post('/providers/test-connection', debugProviderApiKey);
+router.post('/providers/:providerId/refresh-models', refreshProviderModels);
 
 // 개발 환경에서만 사용되는 디버그 라우트
 if (process.env.NODE_ENV !== 'production') {
@@ -55,11 +59,15 @@ router.post('/models', createModel);
 router.put('/models/:modelId', updateModel);
 router.delete('/models/:modelId', deleteModel);
 router.get('/providers/:providerId/models', getModelsByProviderId);
-router.post('/providers/:providerId/models/refresh', refreshProviderModels);
+
 router.post('/models/refresh-all', refreshAllProviderModels);
 
-// 로그 조회 라우트
+// 로그 관리 라우트
 router.get('/logs', getLogs);
 router.get('/logs/:logId', getLogById);
+
+// API 로그 관리 라우트
+router.get('/api-logs', getApiLogs);
+router.get('/api-logs/:logId', getApiLogById);
 
 export default router; 

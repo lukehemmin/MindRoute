@@ -31,11 +31,32 @@ export const getModels = async (req: Request, res: Response, next: NextFunction)
       throw ApiError.badRequest('프로바이더 ID는 필수입니다.');
     }
 
-    const models = await aiService.getModels(providerId);
+    // 데이터베이스에서 직접 모델 정보 가져오기
+    const modelService = require('../services/modelService').default;
+    const models = await modelService.getModelsByProviderId(providerId);
+
+    // API 응답 형식으로 변환
+    const formattedModels = models.map((model: any) => ({
+      id: model.id,
+      name: model.name,
+      providerId: model.providerId,
+      modelId: model.modelId,
+      available: model.active,
+      capabilities: [
+        model.allowImages ? 'images' : null,
+        model.allowVideos ? 'videos' : null,
+        model.allowFiles ? 'files' : null
+      ].filter(Boolean),
+      maxTokens: model.maxTokens,
+      contextWindow: model.contextWindow,
+      inputPrice: model.inputPrice,
+      outputPrice: model.outputPrice,
+      settings: model.settings
+    }));
 
     res.status(200).json({
       success: true,
-      models: models,
+      models: formattedModels,
     });
   } catch (error: any) {
     logger.error(`모델 목록 조회 오류 (${req.params.providerId}):`, error);
@@ -49,7 +70,7 @@ export const getModels = async (req: Request, res: Response, next: NextFunction)
 export const chatCompletion = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { providerId } = req.params;
-    const { model, messages, userApiKeyId, temperature, maxTokens } = req.body;
+    const { model, messages, userApiKeyId, temperature, maxTokens, streaming } = req.body;
     const userId = req.user?.id;
 
     // 요청 유효성 검사
@@ -74,7 +95,8 @@ export const chatCompletion = async (req: Request, res: Response, next: NextFunc
       temperature: temperature !== undefined ? parseFloat(temperature) : undefined,
       maxTokens: maxTokens !== undefined ? parseInt(maxTokens) : undefined,
       files,
-      userApiKeyId
+      userApiKeyId,
+      streaming: streaming !== undefined ? Boolean(streaming) : undefined
     });
 
     res.status(200).json({

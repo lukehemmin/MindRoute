@@ -157,7 +157,8 @@ class ModelService {
         topP: 1.0,
         frequencyPenalty: 0,
         presencePenalty: 0,
-        systemPrompt: ''
+        systemPrompt: '',
+        streaming: true
       };
 
       // 모델 생성

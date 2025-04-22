@@ -41,6 +41,7 @@ export interface ChatRequest {
   temperature?: number;
   maxTokens?: number;
   userApiKeyId?: string; // 사용자가 선택한 API 키 ID
+  streaming?: boolean;
 }
 
 // 채팅 응답 인터페이스
@@ -67,6 +68,46 @@ export interface AIResponse {
   message?: string;
   data: any;
 }
+
+// 모델 목록 캐싱을 위한 변수
+let modelCache: Record<string, { data: Model[], timestamp: number }> = {};
+const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 5분 캐시 유효 시간
+
+// 제공업체의 모델 목록 가져오기
+export const getModels = async (providerId: string): Promise<AIResponse> => {
+  try {
+    // 캐시된 데이터가 있고, 유효 기간 내라면 캐시 데이터 반환
+    const now = Date.now();
+    if (modelCache[providerId] && (now - modelCache[providerId].timestamp) < CACHE_EXPIRY_TIME) {
+      return {
+        success: true,
+        data: modelCache[providerId].data
+      };
+    }
+
+    const response = await api.get(`/api/ai/providers/${providerId}/models`);
+    
+    // 응답 데이터를 캐시에 저장
+    if (response.data.models) {
+      modelCache[providerId] = {
+        data: response.data.models,
+        timestamp: now
+      };
+    }
+    
+    return {
+      success: true,
+      data: response.data.models
+    };
+  } catch (error: any) {
+    console.error('모델 목록 가져오기 오류:', error);
+    return {
+      success: false,
+      message: error.response?.data?.message || '모델 목록을 가져오는데 실패했습니다.',
+      data: []
+    };
+  }
+};
 
 // 제공업체 목록 가져오기
 export const getProviders = async (): Promise<AIResponse> => {
@@ -99,24 +140,6 @@ export const getProvider = async (id: string): Promise<AIResponse> => {
       success: false,
       message: error.response?.data?.message || '제공업체 정보를 가져오는데 실패했습니다.',
       data: null
-    };
-  }
-};
-
-// 제공업체의 모델 목록 가져오기
-export const getModels = async (providerId: string): Promise<AIResponse> => {
-  try {
-    const response = await api.get(`/api/ai/providers/${providerId}/models`);
-    return {
-      success: true,
-      data: response.data.models
-    };
-  } catch (error: any) {
-    console.error('모델 목록 가져오기 오류:', error);
-    return {
-      success: false,
-      message: error.response?.data?.message || '모델 목록을 가져오는데 실패했습니다.',
-      data: []
     };
   }
 };
@@ -240,6 +263,11 @@ export const chatCompletion = async (providerId: string, data: ChatRequest, file
       // API 키 ID 추가
       if (data.userApiKeyId) {
         formData.append('userApiKeyId', data.userApiKeyId);
+      }
+      
+      // 스트리밍 설정 추가
+      if (data.streaming !== undefined) {
+        formData.append('streaming', data.streaming.toString());
       }
       
       // 파일 추가

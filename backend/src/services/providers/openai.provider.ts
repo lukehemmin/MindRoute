@@ -249,9 +249,14 @@ export class OpenAIProvider implements IProvider {
       if (!isO4Model && request.temperature !== undefined) {
         params.temperature = request.temperature;
       }
+      
+      // 스트리밍 옵션이 명시적으로 true인 경우에만 추가
+      if (request.streaming === true) {
+        params.stream = true;
+      }
 
       // 요청 로깅
-      logger.info(`OpenAI 채팅 요청: 모델=${request.model}, temperature=${isO4Model ? '(지원 안 함)' : request.temperature || 0.7}`);
+      logger.info(`OpenAI 채팅 요청: 모델=${request.model}, temperature=${isO4Model ? '(지원 안 함)' : request.temperature || 0.7}, 스트리밍=${request.streaming ? '활성화' : '비활성화'}`);
 
       const response = await this.client!.chat.completions.create(params);
 

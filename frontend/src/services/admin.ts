@@ -82,6 +82,39 @@ export interface ProviderInput {
   active?: boolean;
 }
 
+// API 로그 인터페이스
+export interface ApiLog {
+  id: string;
+  userId: number | null;
+  email: string | null;
+  apiKeyId: string | null;
+  apiKeyName: string | null;
+  apiKey: string | null;
+  model: string | null;
+  input: any;
+  output: any;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  totalTokens: number | null;
+  configuration: any;
+  createdAt: string;
+  updatedAt: string;
+  user?: {
+    id: number;
+    email: string;
+    name: string;
+  };
+}
+
+// API 로그 필터 인터페이스
+export interface ApiLogFilters {
+  email?: string;
+  apiKeyId?: string;
+  model?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
 // 사용자 목록 조회
 export const getAllUsers = async (page = 1, limit = 10, search?: string): Promise<{success: boolean, data: PaginationResponse<User>, message?: string}> => {
   try {
@@ -216,25 +249,27 @@ export const deleteProvider = async (providerId: string) => {
 };
 
 // 로그 목록 조회
-export const getLogs = async (page = 1, limit = 10, filters?: { userId?: string, providerId?: string, status?: string, startDate?: string, endDate?: string }): Promise<{success: boolean, data: PaginationResponse<Log>, message?: string}> => {
+export const getLogs = async (page = 1, limit = 10, filters?: { userId?: string, providerId?: string, status?: string, startDate?: string, endDate?: string }): Promise<{success: boolean, data: { logs: Log[], pagination: { totalItems: number, totalPages: number, currentPage: number, itemsPerPage: number } }, message?: string}> => {
   try {
-    const response = await api.get<PaginationResponse<Log>>('/api/admin/logs', {
+    const response = await api.get('/api/admin/logs', {
       params: { page, limit, ...filters },
     });
     return {
       success: true,
-      data: response.data
+      data: response.data.data
     };
   } catch (error: any) {
     return {
       success: false,
       message: error.response?.data?.message || '로그 목록을 가져오는데 실패했습니다.',
       data: {
-        items: [],
-        totalItems: 0,
-        totalPages: 0,
-        currentPage: page,
-        itemsPerPage: limit
+        logs: [],
+        pagination: {
+          totalItems: 0,
+          totalPages: 0,
+          currentPage: page,
+          itemsPerPage: limit
+        }
       }
     };
   }
@@ -359,6 +394,67 @@ export const testProviderApi = async (providerId: string, providerData: Partial<
       success: false,
       message: error.response?.data?.message || '제공업체 API 테스트 중 오류가 발생했습니다.',
       error: error.code || 'UNKNOWN_ERROR'
+    };
+  }
+};
+
+/**
+ * API 로그 목록 조회
+ */
+export const getApiLogs = async (
+  page = 1,
+  limit = 10,
+  filters: ApiLogFilters = {}
+): Promise<{success: boolean, data: { logs: ApiLog[], pagination: { totalItems: number, totalPages: number, currentPage: number, itemsPerPage: number } }, message?: string}> => {
+  try {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+
+    // 필터 추가
+    if (filters.email) params.append('email', filters.email);
+    if (filters.apiKeyId) params.append('apiKeyId', filters.apiKeyId);
+    if (filters.model) params.append('model', filters.model);
+    if (filters.startDate) params.append('startDate', filters.startDate);
+    if (filters.endDate) params.append('endDate', filters.endDate);
+
+    const response = await api.get(`/api/admin/api-logs?${params.toString()}`);
+    return {
+      success: true,
+      data: response.data.data
+    };
+  } catch (error: any) {
+    console.error('API 로그 목록 요청 오류:', error);
+    return {
+      success: false,
+      message: error.response?.data?.message || 'API 로그 목록을 가져오는데 실패했습니다.',
+      data: {
+        logs: [],
+        pagination: {
+          totalItems: 0,
+          totalPages: 0,
+          currentPage: page,
+          itemsPerPage: limit
+        }
+      }
+    };
+  }
+};
+
+/**
+ * API 로그 상세 조회
+ */
+export const getApiLogById = async (logId: string): Promise<{success: boolean, data: ApiLog | null, message?: string}> => {
+  try {
+    const response = await api.get(`/api/admin/api-logs/${logId}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('API 로그 상세 조회 오류:', error);
+    return {
+      success: false,
+      message: error.response?.data?.message || 'API 로그를 가져오는데 실패했습니다.',
+      data: null
     };
   }
 }; 

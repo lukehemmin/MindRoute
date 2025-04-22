@@ -79,6 +79,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
       icon: <FiCpu className="mr-3 h-5 w-5" />
     },
     {
+      name: '로그 관리',
+      href: '/admin/logs',
+      icon: <FiClock className="mr-3 h-5 w-5" />
+    },
+    {
+      name: 'API 로그 관리',
+      href: '/admin/api-logs',
+      icon: <FiClock className="mr-3 h-5 w-5" />
+    },
+    {
       name: '시스템 설정',
       href: '/admin/settings',
       icon: <FiShield className="mr-3 h-5 w-5" />

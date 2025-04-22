@@ -3,6 +3,7 @@ import { getProviders, getModels, chatCompletion, textCompletion } from '../cont
 import { authenticate } from '../middlewares/auth.middleware';
 import { handleFileUpload } from '../middlewares/fileUpload.middleware';
 import { aiApiRateLimit } from '../middlewares/rateLimit.middleware';
+import { logApiRequest } from '../middlewares/apiLog.middleware';
 
 const router = Router();
 
@@ -11,6 +12,9 @@ router.use(authenticate);
 
 // 속도 제한 미들웨어 적용
 router.use(aiApiRateLimit);
+
+// API 로그 미들웨어 적용
+router.use(logApiRequest);
 
 // AI 서비스 상태 확인
 router.get('/status', (req, res) => {
