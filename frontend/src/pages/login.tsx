@@ -61,37 +61,59 @@ const LoginPage: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
     try {
+      console.log('[디버그] 로그인 시도 - API URL:', process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001');
       setIsLoading(true);
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/auth/login`, {
-        email: formData.email,
-        password: formData.password
-      });
+      
+      // auth 서비스 사용하여 로그인
+      const result = await login(formData.email, formData.password);
+      
+      console.log('[디버그] 로그인 결과:', result);
 
-      if (response.data.success) {
-        const { user, accessToken, refreshToken } = response.data.data;
+      if (result.success) {
+        const { user, accessToken, refreshToken } = result.data || {};
         
         console.log('로그인 성공:', { 
-          userId: user.id, 
-          role: user.role, 
-          tokenLength: accessToken.length
+          userId: user?.id, 
+          role: user?.role, 
+          tokenLength: accessToken?.length
         });
         
         // 인증 정보 저장
-        useAuthStore.getState().setAuth(user, accessToken, refreshToken);
-        
-        // 리다이렉트
-        if (user.role === 'admin') {
-          router.push('/admin');
+        if (user && accessToken && refreshToken) {
+          useAuthStore.getState().setAuth(user, accessToken, refreshToken);
+          
+          // 리다이렉트
+          if (user.role === 'admin') {
+            router.push('/admin');
+          } else {
+            router.push('/dashboard');
+          }
         } else {
-          router.push('/dashboard');
+          console.error('[디버그] 응답에 필요한 정보가 없습니다:', result);
+          setLoginError('로그인 응답에 필요한 정보가 없습니다.');
         }
       } else {
-        setLoginError(response.data.message || '로그인에 실패했습니다.');
+        setLoginError(result.message || '로그인에 실패했습니다.');
       }
     } catch (err: any) {
-      console.error('로그인 오류:', err);
-      setLoginError(err.response?.data?.message || '로그인 중 오류가 발생했습니다.');
+      console.error('[디버그] 로그인 오류:', err);
+      
+      // 요청과 응답 정보 자세히 로깅
+      if (err.response) {
+        console.error('[디버그] 응답 상태:', err.response.status);
+        console.error('[디버그] 응답 헤더:', err.response.headers);
+        console.error('[디버그] 응답 데이터:', err.response.data);
+      } else if (err.request) {
+        console.error('[디버그] 요청 정보:', err.request);
+      }
+      
+      setLoginError(err.message || '로그인 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }

@@ -16,14 +16,34 @@ export interface AuthResponse {
 // 로그인
 export const login = async (email: string, password: string): Promise<AuthResponse & { status?: number }> => {
   try {
+    console.log('[AUTH 서비스] 로그인 시도:', { email });
+    
+    // 직접 axios로 요청을 수행하여 문제 확인
+    const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+    console.log('[AUTH 서비스] 사용할 API URL:', baseURL);
+    
     const response = await api.post('/api/auth/login', { email, password });
+    
+    console.log('[AUTH 서비스] 로그인 응답 상태:', response.status);
+    console.log('[AUTH 서비스] 로그인 응답 구조:', {
+      success: response.data.success,
+      hasData: !!response.data.data,
+      dataKeys: response.data.data ? Object.keys(response.data.data) : []
+    });
     
     // 응답에서 사용자 정보와 토큰 추출
     const { accessToken, refreshToken, user } = response.data.data;
     
     // Zustand 스토어에 사용자 정보와 토큰 저장
     if (user && accessToken && refreshToken) {
+      console.log('[AUTH 서비스] 인증 정보 저장:', { 
+        userId: user.id, 
+        role: user.role,
+        tokenPresent: !!accessToken && !!refreshToken 
+      });
       useAuthStore.getState().setAuth(user, accessToken, refreshToken);
+    } else {
+      console.error('[AUTH 서비스] 응답에 필요한 인증 정보가 없습니다:', response.data);
     }
     
     return {
@@ -31,7 +51,18 @@ export const login = async (email: string, password: string): Promise<AuthRespon
       data: response.data.data
     };
   } catch (error: any) {
-    console.error('로그인 오류:', error);
+    console.error('[AUTH 서비스] 로그인 오류:', error.message);
+    
+    // 더 자세한 오류 정보 로깅
+    if (error.response) {
+      console.error('[AUTH 서비스] 응답 상태:', error.response.status);
+      console.error('[AUTH 서비스] 응답 데이터:', error.response.data);
+    } else if (error.request) {
+      console.error('[AUTH 서비스] 요청은 전송되었으나 응답이 없음:', error.request);
+    } else {
+      console.error('[AUTH 서비스] 오류 메시지:', error.message);
+    }
+    
     return {
       success: false,
       message: error.response?.data?.message || '로그인에 실패했습니다.',

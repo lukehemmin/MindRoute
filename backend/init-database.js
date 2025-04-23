@@ -13,17 +13,14 @@ const dbConfig = {
   dialect: process.env.DB_DIALECT || 'postgres',
 };
 
-// 암호화 함수 (src/utils/encryption.ts의 로직과 동일하게 수정)
-function encrypt(text) {
+// 암호화 함수
+function encrypt(text, encryptionKey) {
   try {
     // 초기화 벡터 생성
     const iv = crypto.randomBytes(16);
     
-    // 키가 32바이트(256비트)인지 확인 - encryption.ts와 동일한 방식으로 키 생성
-    const key = crypto.createHash('sha256')
-      .update(String(process.env.ENCRYPTION_KEY || ''))
-      .digest('base64')
-      .slice(0, 32);
+    // base64 형식의 키를 사용
+    const key = Buffer.from(encryptionKey, 'base64').slice(0, 32);
     
     // 암호화
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
@@ -58,6 +55,45 @@ async function initDatabase() {
     // 데이터베이스 연결 테스트
     await sequelize.authenticate();
     console.log('데이터베이스 연결 성공');
+    
+    // 암호화 키 가져오기
+    let encryptionKey;
+    
+    // system_configs 테이블 존재 확인
+    const [tables] = await sequelize.query(
+      "SELECT to_regclass('public.system_configs') is not null as exists"
+    );
+    
+    if (tables[0].exists) {
+      // 기존 암호화 키 조회
+      const [keyResult] = await sequelize.query(
+        "SELECT value FROM system_configs WHERE key = 'ENCRYPTION_KEY'"
+      );
+      
+      if (keyResult.length > 0) {
+        encryptionKey = keyResult[0].value;
+        console.log('DB에서 암호화 키를 가져왔습니다.');
+      } else {
+        // 새 키 생성 및 저장
+        encryptionKey = crypto.randomBytes(32).toString('base64');
+        await sequelize.query(
+          `INSERT INTO system_configs (key, value, description, "createdAt", "updatedAt") 
+           VALUES (:key, :value, :description, NOW(), NOW())`,
+          {
+            replacements: {
+              key: 'ENCRYPTION_KEY',
+              value: encryptionKey,
+              description: '자동 생성된 암호화 키'
+            }
+          }
+        );
+        console.log('새 암호화 키를 생성하여 DB에 저장했습니다.');
+      }
+    } else {
+      // 테이블이 없는 경우 임시 키 사용
+      console.log('system_configs 테이블이 없습니다. 임시 암호화 키를 사용합니다.');
+      encryptionKey = crypto.randomBytes(32).toString('base64');
+    }
     
     // Provider 모델 정의 (Provider.model.ts와 유사하게)
     const Provider = sequelize.define('Provider', {
@@ -121,13 +157,13 @@ async function initDatabase() {
     console.log(`현재 ${existingProviders.length}개의 제공업체가 등록되어 있습니다.`);
     
     if (existingProviders.length === 0) {
-      // 시드 데이터 생성
+      // 시드 데이터 생성 - 암호화 키 전달
       const providers = [
         {
           id: uuidv4(),
           name: 'OpenAI (테스트)',
           type: 'openai',
-          apiKey: encrypt('test-openai-key'),
+          apiKey: encrypt('test-openai-key', encryptionKey),
           endpointUrl: null,
           allowImages: true,
           allowVideos: false,
@@ -140,7 +176,7 @@ async function initDatabase() {
           id: uuidv4(),
           name: 'Anthropic (테스트)',
           type: 'anthropic',
-          apiKey: encrypt('test-anthropic-key'),
+          apiKey: encrypt('test-anthropic-key', encryptionKey),
           endpointUrl: null,
           allowImages: true,
           allowVideos: false,
@@ -153,7 +189,7 @@ async function initDatabase() {
           id: uuidv4(),
           name: 'Google AI (테스트)',
           type: 'google',
-          apiKey: encrypt('test-google-key'),
+          apiKey: encrypt('test-google-key', encryptionKey),
           endpointUrl: null,
           allowImages: true,
           allowVideos: false,

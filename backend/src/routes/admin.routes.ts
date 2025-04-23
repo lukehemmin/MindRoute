@@ -26,6 +26,7 @@ import {
   getApiLogs,
   getApiLogById
 } from '../controllers/admin/apiLog.controller';
+import { testProviderConnection } from '../controllers/provider.controller';
 
 const router = Router();
 
@@ -46,6 +47,7 @@ router.post('/providers', createProvider);
 router.put('/providers/:providerId', updateProvider);
 router.delete('/providers/:providerId', deleteProvider);
 router.post('/providers/:providerId/refresh-models', refreshProviderModels);
+router.post('/providers/test-connection', testProviderConnection);
 
 // 개발 환경에서만 사용되는 디버그 라우트
 if (process.env.NODE_ENV !== 'production') {

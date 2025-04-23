@@ -17,6 +17,7 @@ import usersRoutes from './routes/users.routes';
 import logger from './utils/logger';
 import fileUpload from 'express-fileupload';
 import providerManager from './utils/providerManager';
+import config, { initializeSecurityKeys } from './config/app.config';
 
 const app: Express = express();
 const port = process.env.PORT || 5000;
@@ -92,6 +93,29 @@ app.listen(port, async () => {
       await initDatabase();
     }
     logger.info('Database initialization completed');
+    
+    // 보안 키 초기화 (DB에서 로드 또는 생성)
+    try {
+      await initializeSecurityKeys();
+      // 로드된 키 값이 유효한지 확인
+      if (!config.jwtSecret || config.jwtSecret.trim() === '') {
+        throw new Error('JWT 시크릿 키가 비어 있습니다.');
+      }
+      if (!config.encryptionKey || config.encryptionKey.trim() === '') {
+        throw new Error('암호화 키가 비어 있습니다.');
+      }
+      logger.info('보안 키 초기화 완료');
+      logger.info(`JWT 시크릿 키 길이: ${config.jwtSecret.length}`);
+      logger.info(`암호화 키 길이: ${config.encryptionKey.length}`);
+    } catch (error) {
+      logger.error(`보안 키 초기화 실패: ${error instanceof Error ? error.message : 'unknown error'}`);
+      if (process.env.NODE_ENV === 'production') {
+        logger.error('프로덕션 환경에서 보안 키를 로드하지 못했습니다. 애플리케이션을 종료합니다.');
+        process.exit(1);
+      } else {
+        logger.warn('개발 환경에서 임시 보안 키를 사용합니다.');
+      }
+    }
   } catch (error) {
     logger.error('Database initialization failed:', error);
     // 심각한 오류이므로 프로세스 종료도 고려할 수 있음

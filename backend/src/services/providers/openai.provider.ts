@@ -260,11 +260,27 @@ export class OpenAIProvider implements IProvider {
 
       const response = await this.client!.chat.completions.create(params);
 
-      // OpenAI 응답을 표준 형식으로 변환
+      // 스트리밍 모드인 경우 다른 형태의 응답이 오기 때문에 별도 처리 필요
+      if (request.streaming === true) {
+        return {
+          message: {
+            role: 'assistant',
+            content: '', // 스트리밍의 경우 초기 콘텐츠는 빈 문자열로 설정
+          },
+          usage: {
+            promptTokens: 0,
+            completionTokens: 0,
+            totalTokens: 0,
+          },
+          stream: response, // 스트림 객체 자체를 반환하여 컨트롤러에서 처리하도록 함
+        };
+      }
+
+      // 일반 모드일 때 OpenAI 응답을 표준 형식으로 변환
       return {
         message: {
           role: 'assistant',
-          content: response.choices[0]?.message?.content || '',
+          content: response.choices?.[0]?.message?.content || '',
         },
         usage: {
           promptTokens: response.usage?.prompt_tokens || 0,

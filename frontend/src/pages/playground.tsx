@@ -14,7 +14,8 @@ import {
   Message
 } from '../services/ai';
 import { getApiKeys, ApiKey } from '../services/user';
-import { FiUpload, FiImage, FiFile, FiX, FiSend, FiUser, FiServer, FiKey, FiChevronDown, FiChevronUp, FiSettings } from 'react-icons/fi';
+import { FiUpload, FiImage, FiFile, FiX, FiSend, FiUser, FiServer, FiKey, FiChevronDown, FiChevronUp, FiSettings, FiRefreshCw } from 'react-icons/fi';
+import { logDiagnostics, checkAuthStatus } from '../utils/debug';
 
 // 메시지 콘텐츠 아이템 인터페이스 확장
 interface MessageContentItem {
@@ -66,6 +67,14 @@ const Playground: React.FC = () => {
     if (!isAuthenticated) {
       router.push('/login');
       return;
+    }
+
+    // 인증 상태 확인 및 로깅
+    const authStatus = checkAuthStatus();
+    console.log('Playground 초기화 - 인증 상태 확인:', authStatus.authenticated);
+    
+    if (!authStatus.authenticated) {
+      console.warn('인증 토큰 문제 발견. 새로고침 또는 재로그인이 필요할 수 있습니다.');
     }
 
     // 제공업체 목록 가져오기
@@ -311,6 +320,99 @@ const Playground: React.FC = () => {
           selectedApiKey
         );
       }
+      // 스트리밍 활성화된 일반 텍스트 요청인 경우
+      else if (streaming) {
+        // 먼저 빈 응답으로 시작하는 AI 메시지 추가
+        let assistantMessageIndex = 0;
+        
+        setMessages(prevMessages => {
+          // 메시지가 추가된 후의 인덱스 계산
+          assistantMessageIndex = prevMessages.length;
+          
+          console.log('빈 AI 메시지 추가, 인덱스:', assistantMessageIndex);
+          return [
+            ...prevMessages,
+            {
+              role: 'assistant',
+              content: ''
+            }
+          ];
+        });
+        
+        // 스트리밍 콜백 객체 생성
+        const streamCallbacks = {
+          onStart: () => {
+            console.log('스트리밍 시작');
+          },
+          onContent: (content: string, done: boolean) => {
+            console.log('콘텐츠 청크 받음:', content);
+            // 새 콘텐츠가 도착할 때마다 메시지 업데이트
+            setMessages(prevMessages => {
+              console.log('현재 메시지 상태:', prevMessages);
+              console.log('AI 메시지 인덱스:', assistantMessageIndex);
+              
+              // 이전 메시지 복사
+              const updatedMessages = [...prevMessages];
+              
+              // 마지막 AI 메시지 찾기 (직접 찾기)
+              const lastAiMessageIndex = updatedMessages.length - 1;
+              const assistantMessage = updatedMessages[lastAiMessageIndex];
+              
+              console.log('업데이트할 메시지:', assistantMessage);
+              
+              if (assistantMessage && assistantMessage.role === 'assistant') {
+                // 기존 콘텐츠에 새 콘텐츠 추가
+                const currentContent = typeof assistantMessage.content === 'string' 
+                  ? assistantMessage.content 
+                  : '';
+                
+                console.log('기존 콘텐츠:', currentContent);
+                console.log('추가할 콘텐츠:', content);
+                
+                updatedMessages[lastAiMessageIndex] = {
+                  ...assistantMessage,
+                  content: currentContent + content
+                };
+                
+                console.log('업데이트된 메시지:', updatedMessages[lastAiMessageIndex]);
+              } else {
+                console.error('메시지 업데이트 불가: assistant 메시지를 찾을 수 없음');
+              }
+              
+              return updatedMessages;
+            });
+          },
+          onComplete: (usage: { promptTokens: number; completionTokens: number; totalTokens: number }) => {
+            console.log('스트리밍 완료', usage);
+            setLoading(false);
+          },
+          onError: (error: Error) => {
+            console.error('스트리밍 오류:', error);
+            setError('스트리밍 응답 중 오류가 발생했습니다: ' + error.message);
+            setLoading(false);
+          }
+        };
+        
+        // 스트리밍 요청 시작
+        await chatCompletion(
+          selectedProvider, 
+          {
+            model: selectedModel,
+            messages: allMessages,
+            temperature: temperature,
+            maxTokens: maxTokens || undefined,
+            userApiKeyId: selectedApiKey,
+            streaming: true
+          },
+          undefined,
+          streamCallbacks
+        );
+        
+        // 입력 필드 및 업로드 초기화
+        setPrompt('');
+        resetUploads();
+        return; // 여기서 함수 종료 (나머지 처리는 콜백에서 수행)
+      }
       // 일반 텍스트 요청인 경우
       else {
         result = await chatCompletion(
@@ -441,6 +543,37 @@ const Playground: React.FC = () => {
     );
   };
 
+  // 스트리밍 토글 핸들러
+  const handleStreamingToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setStreaming(e.target.checked);
+    
+    // 스트리밍 설정이 변경될 때 인증 상태 확인
+    if (e.target.checked) {
+      console.log('스트리밍 모드 활성화됨 - 인증 상태 확인');
+      logDiagnostics(); 
+    }
+  };
+  
+  // 토큰 재검증 및 새로고침
+  const refreshToken = () => {
+    console.log('토큰 상태 새로고침 시도');
+    logDiagnostics();
+    
+    // 로그인 상태 확인
+    const authState = useAuthStore.getState();
+    if (!authState.isAuthenticated || !authState.accessToken) {
+      setError('인증 토큰에 문제가 있습니다. 다시 로그인해주세요.');
+      setTimeout(() => {
+        router.push('/login');
+      }, 2000);
+    } else {
+      setError('인증 토큰이 확인되었습니다. 요청을 다시 시도해보세요.');
+      setTimeout(() => {
+        setError('');
+      }, 3000);
+    }
+  };
+
   return (
     <Layout>
       <div className="flex flex-col flex-1 w-full h-full">
@@ -452,16 +585,23 @@ const Playground: React.FC = () => {
         </div>
         
         {error && (
-          <div className="mx-4 mt-2 mb-0 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative flex-shrink-0" role="alert">
-            <div className="flex justify-between items-center">
-              <span className="block sm:inline">{error}</span>
-              {(error.includes('API 키') || error.includes('API키')) && (
-                <a 
-                  href="/api-keys" 
-                  className="ml-4 bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm"
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+              {error.includes('인증 토큰') && (
+                <button 
+                  className="ml-auto flex items-center text-xs px-2 py-1 bg-red-100 hover:bg-red-200 text-red-800 rounded"
+                  onClick={refreshToken}
                 >
-                  API 키 관리
-                </a>
+                  <FiRefreshCw className="mr-1" /> 토큰 확인
+                </button>
               )}
             </div>
           </div>
@@ -661,7 +801,7 @@ const Playground: React.FC = () => {
                           name="streaming"
                           className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                           checked={streaming}
-                          onChange={(e) => setStreaming(e.target.checked)}
+                          onChange={handleStreamingToggle}
                           disabled={loading}
                         />
                         <label htmlFor="streaming" className="ml-2 block text-sm font-medium text-gray-700">
@@ -846,6 +986,62 @@ const Playground: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* 디버깅 도구 (개발 환경에서만 표시) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-4 p-3 bg-gray-100 rounded-md">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-medium text-gray-700">디버깅 도구</h3>
+              <div className="flex space-x-2">
+                <button 
+                  className="text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded"
+                  onClick={() => {
+                    logDiagnostics();
+                    setError('콘솔에 디버깅 정보가 표시되었습니다.');
+                    setTimeout(() => setError(''), 3000);
+                  }}
+                >
+                  <span className="flex items-center">
+                    <FiRefreshCw className="mr-1" /> 진단 정보
+                  </span>
+                </button>
+                <button 
+                  className="text-xs px-2 py-1 bg-red-100 hover:bg-red-200 text-red-800 rounded"
+                  onClick={() => {
+                    // 강제 로그아웃 후 재로그인 페이지로 이동
+                    useAuthStore.getState().logout();
+                    router.push('/login');
+                  }}
+                >
+                  <span className="flex items-center">
+                    재로그인
+                  </span>
+                </button>
+              </div>
+            </div>
+            <div className="text-xs text-gray-600">
+              <p>스트리밍 응답에 문제가 있는 경우:</p>
+              <ol className="list-decimal pl-4 mt-1">
+                <li>토큰 확인 후 재시도</li>
+                <li>재로그인 후 다시 시도</li>
+                <li>스트리밍 모드 비활성화 후 사용</li>
+              </ol>
+            </div>
+            <div className="mt-2 text-xs text-gray-600">
+              {(() => {
+                const auth = useAuthStore.getState();
+                return (
+                  <>
+                    <strong>현재 인증 상태:</strong> {auth.isAuthenticated ? '인증됨 ✅' : '인증 안됨 ❌'}
+                    {auth.accessToken && (
+                      <div>토큰: {auth.accessToken.substring(0, 15)}...</div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

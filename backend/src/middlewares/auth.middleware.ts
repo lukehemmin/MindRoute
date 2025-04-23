@@ -16,6 +16,16 @@ declare global {
   }
 }
 
+// 토큰에서 사용자 ID 추출하는 함수
+const extractUserIdFromToken = (token: string): number => {
+  try {
+    const decoded = jwt.verify(token, config.jwtSecret) as any;
+    return decoded.userId;
+  } catch (error) {
+    throw ApiError.unauthorized('유효하지 않은 토큰입니다.');
+  }
+};
+
 /**
  * 인증 확인 미들웨어
  * Authorization 헤더의 JWT 토큰을 검증하고 요청 객체에 사용자 정보를 추가합니다.
@@ -28,56 +38,100 @@ export const authenticate = async (
   try {
     // Authorization 헤더에서 토큰 가져오기
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token = '';
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7); // 'Bearer ' 이후의 문자열
+    }
+    
+    // 토큰이 없는 경우
+    if (!token) {
       throw ApiError.unauthorized('인증 토큰이 제공되지 않았습니다.');
     }
-
-    const token = authHeader.split(' ')[1];
-    if (!token) {
-      throw ApiError.unauthorized('유효한 인증 토큰이 제공되지 않았습니다.');
-    }
-
-    // 토큰 검증
-    const decoded = jwt.verify(token, config.jwtSecret) as TokenPayload;
-    if (!decoded) {
+    
+    try {
+      // 토큰 검증
+      const userId = extractUserIdFromToken(token);
+      
+      // 사용자 정보 조회
+      const user = await User.findOne({ where: { id: userId } });
+      
+      if (!user) {
+        throw ApiError.unauthorized('사용자를 찾을 수 없습니다.');
+      }
+      
+      if (!user.isActive) {
+        throw ApiError.unauthorized('비활성화된 계정입니다.');
+      }
+      
+      // 사용자 정보를 요청 객체에 추가
+      req.user = user;
+      
+      // 다음 미들웨어로 이동
+      next();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      logger.error('인증 오류:', error);
       throw ApiError.unauthorized('유효하지 않은 토큰입니다.');
     }
-
-    // 토큰 유형 확인
-    if (decoded.type !== TokenType.ACCESS) {
-      throw ApiError.unauthorized('유효하지 않은 토큰 유형입니다.');
-    }
-
-    // 사용자 조회 (userId 필드 사용)
-    const user = await User.findByPk(decoded.userId);
-    if (!user) {
-      logger.error(`인증 실패: 사용자 ID ${decoded.userId}를 찾을 수 없습니다.`);
-      throw ApiError.unauthorized('사용자를 찾을 수 없습니다.');
-    }
-
-    // 토큰 만료 여부 확인
-    const currentTimestamp = Math.floor(Date.now() / 1000);
-    // TokenPayload 타입에는 exp 속성이 없지만 jwt.verify() 결과에는 추가됨
-    const jwtDecoded = decoded as TokenPayload & { exp?: number; iat?: number };
-    if (jwtDecoded.exp && jwtDecoded.exp < currentTimestamp) {
-      throw ApiError.unauthorized('토큰이 만료되었습니다.');
-    }
-
-    // 요청 객체에 사용자 정보 추가
-    req.user = user;
-    req.token = token;
-
-    next();
   } catch (error) {
-    // JWT 검증 오류 처리
-    if (error instanceof jwt.JsonWebTokenError) {
-      return next(ApiError.unauthorized('유효하지 않은 토큰입니다.'));
+    next(error);
+  }
+};
+
+/**
+ * 인증 미들웨어 - 스트리밍 요청용 (쿼리 파라미터로 토큰 전달)
+ */
+export const authenticateStream = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    // 쿼리 파라미터에서 인증 토큰 가져오기
+    const authToken = req.query.auth_token as string;
+    
+    // 요청 로깅
+    logger.debug(`스트리밍 인증 시도: URL=${req.originalUrl}, 쿼리=${JSON.stringify(req.query)}`);
+    
+    // 토큰이 없는 경우
+    if (!authToken) {
+      logger.warn('스트리밍 인증 실패: 인증 토큰이 제공되지 않음');
+      throw ApiError.unauthorized('인증 토큰이 제공되지 않았습니다.');
     }
     
-    if (error instanceof jwt.TokenExpiredError) {
-      return next(ApiError.unauthorized('토큰이 만료되었습니다.'));
+    try {
+      // 토큰 검증
+      logger.debug('스트리밍 인증: 토큰 검증 시도');
+      const userId = extractUserIdFromToken(authToken);
+      
+      // 사용자 정보 조회
+      const user = await User.findOne({ where: { id: userId } });
+      
+      if (!user) {
+        logger.warn(`스트리밍 인증 실패: 사용자 ID ${userId} 찾을 수 없음`);
+        throw ApiError.unauthorized('사용자를 찾을 수 없습니다.');
+      }
+      
+      if (!user.isActive) {
+        logger.warn(`스트리밍 인증 실패: 사용자 ID ${userId}는 비활성 상태`);
+        throw ApiError.unauthorized('비활성화된 계정입니다.');
+      }
+      
+      // 사용자 정보를 요청 객체에 추가
+      req.user = user;
+      
+      logger.info(`스트리밍 인증 성공: 사용자 ID ${userId}, URL=${req.originalUrl}`);
+      
+      // 다음 미들웨어로 이동
+      next();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      logger.error('스트리밍 인증 오류:', error);
+      throw ApiError.unauthorized('유효하지 않은 토큰입니다.');
     }
-    
+  } catch (error) {
+    logger.error(`스트리밍 인증 처리 중 오류 발생: ${error instanceof Error ? error.message : 'Unknown error'}`);
     next(error);
   }
 };

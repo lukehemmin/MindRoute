@@ -13,10 +13,18 @@ export const login = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    // 로그인 요청 로깅 추가
+    logger.debug(`로그인 요청 수신: ${JSON.stringify({
+      email: req.body.email,
+      ip: req.ip,
+      userAgent: req.headers['user-agent']
+    })}`);
+    
     const { email, password } = req.body;
     
     // 필수 입력값 검증
     if (!email || !password) {
+      logger.warn(`로그인 실패: 필수 입력값 누락 (이메일: ${email ? '있음' : '없음'}, 비밀번호: ${password ? '있음' : '없음'})`);
       res.status(400).json({
         success: false,
         message: '이메일과 비밀번호를 모두 입력해주세요.',
@@ -30,6 +38,8 @@ export const login = async (
       req.headers['x-forwarded-for'] || 
       req.connection.remoteAddress
     ) as string;
+    
+    logger.info(`로그인 시도: ${email} (IP: ${ipAddress})`);
     
     // 로그인 처리
     const tokens = await authService.login(
@@ -53,6 +63,8 @@ export const login = async (
       createdAt: user.createdAt
     };
     
+    logger.info(`로그인 성공: ${email} (사용자 ID: ${user.id})`);
+    
     // 토큰과 사용자 정보 반환
     res.json({
       success: true,
@@ -63,15 +75,17 @@ export const login = async (
       },
     });
   } catch (error: any) {
-    logger.error('로그인 컨트롤러 오류:', error);
+    logger.error(`로그인 컨트롤러 오류: ${error.message}`, error);
     
     // 인증 관련 오류는 401로 응답
     if (error.message.includes('이메일 또는 비밀번호')) {
+      logger.warn(`로그인 실패: 잘못된 인증 정보 (${req.body.email})`);
       res.status(401).json({
         success: false,
         message: error.message,
       });
     } else if (error.message.includes('비활성화')) {
+      logger.warn(`로그인 실패: 비활성화된 계정 (${req.body.email})`);
       res.status(403).json({
         success: false,
         message: error.message,

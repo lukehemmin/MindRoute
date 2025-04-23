@@ -67,6 +67,7 @@ export interface IChatResponse {
     completionTokens: number;
     totalTokens: number;
   };
+  stream?: any;
 }
 
 // 텍스트 완성 요청 인터페이스
